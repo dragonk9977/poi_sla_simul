@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>장소데이터팀 SLA 성과 시뮬레이터 v1.1</title>
+<title>장소데이터팀 SLA 성과 시뮬레이터 v1.2</title>
 <style>
 :root{
   box-sizing:border-box;
@@ -47,76 +47,76 @@ html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
 *,*::before,*::after{box-sizing:inherit}
 body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);padding:16px;
   font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI','Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;
-  font-size:16px;line-height:1.5}
+  font-size:17.5px;line-height:1.5}
 @media (min-width:768px){body{padding:32px}}
 button,input{font:inherit;color:inherit}
 input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 input[type=number]{-moz-appearance:textfield}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
-.page{max-width:1024px;margin:0 auto;display:flex;flex-direction:column;gap:24px}
+.page{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:24px}
 .hidden{display:none !important}
 
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
 .card.red{border-color:var(--red-line)}
 .card.big{padding:24px}
 .ch{display:flex;align-items:center;gap:8px;margin-bottom:12px}
-.ch h2{margin:0;font-size:14px;font-weight:700;color:var(--ink)}
+.ch h2{margin:0;font-size:15.5px;font-weight:700;color:var(--ink)}
 .ch .ico{font-weight:700}
-.ch .right{margin-left:auto;font-size:12px;color:var(--mut2)}
-.xs{font-size:12px}
+.ch .right{margin-left:auto;font-size:14px;color:var(--mut2)}
+.xs{font-size:14px}
 
 /* dashboard */
 .dtop{display:flex;flex-direction:column;gap:16px}
 @media (min-width:768px){.dtop{flex-direction:row;align-items:center;justify-content:space-between}}
 .titlerow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.badge{background:#2563eb;color:#fff;font-size:12px;font-weight:700;padding:2px 10px;border-radius:999px}
-.titlerow h1{margin:0;font-size:24px;line-height:1.25;font-weight:700;color:var(--strong)}
-.note{margin:4px 0 0;font-size:12px;color:var(--mut)}
+.badge{background:#2563eb;color:#fff;font-size:14px;font-weight:700;padding:2px 10px;border-radius:999px}
+.titlerow h1{margin:0;font-size:26px;line-height:1.25;font-weight:700;color:var(--strong)}
+.note{margin:4px 0 0;font-size:14px;color:var(--mut)}
 .resbox{display:flex;align-items:center;gap:24px;background:var(--soft);border:1px solid var(--line);padding:12px 24px;border-radius:12px;box-shadow:inset 0 2px 4px rgba(0,0,0,.05)}
-.resbox .lab{display:block;font-size:12px;font-weight:600;color:var(--mut2)}
+.resbox .lab{display:block;font-size:14px;font-weight:600;color:var(--mut2)}
 .resbox .sep{height:40px;width:1px;background:var(--line)}
 .score{display:flex;align-items:baseline;justify-content:flex-end;gap:4px}
-.score .n{font-size:30px;line-height:1.2;font-weight:900;color:var(--blue)}
-.score .u{font-size:14px;font-weight:600;color:var(--mut)}
-.gr{font-size:30px;line-height:1.2;font-weight:900;color:var(--mut2)}
-.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:20px;padding-top:20px;border-top:1px solid var(--line);font-size:12px}
+.score .n{font-size:32px;line-height:1.2;font-weight:900;color:var(--blue)}
+.score .u{font-size:15.5px;font-weight:600;color:var(--mut)}
+.gr{font-size:32px;line-height:1.2;font-weight:900;color:var(--mut2)}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:20px;padding-top:20px;border-top:1px solid var(--line);font-size:14px}
 @media (min-width:768px){.tiles{grid-template-columns:repeat(4,1fr)}}
 .tile{background:var(--soft);padding:10px;border-radius:8px;border:1px solid var(--line)}
 .tile .k{display:block;color:var(--mut2)}
-.tile .v{font-size:16px;font-weight:700;color:var(--ink)}
+.tile .v{font-size:17.5px;font-weight:700;color:var(--ink)}
 .tile .v.neg{color:var(--red)}
-.dx{margin-top:14px;font-size:12px;color:var(--mut);display:flex;flex-direction:column;gap:3px}
+.dx{margin-top:14px;font-size:14px;color:var(--mut);display:flex;flex-direction:column;gap:3px}
 .dx b{font-weight:600;color:var(--ink)}
 .up{color:var(--pos);font-weight:600}.dn{color:var(--neg);font-weight:600}
 .gc0{color:var(--gc0)}.gc1{color:var(--gc1)}.gc2{color:var(--gc2)}.gc3{color:var(--gc3)}.gc4{color:var(--gc4)}.gc5{color:var(--gc5)}.gc6{color:var(--gc6)}
 
 /* toolbar */
 .bar{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
-.tbtn{font-size:12px;font-weight:600;color:var(--mut);background:var(--card);padding:6px 12px;border-radius:8px;border:1px solid var(--line);box-shadow:0 1px 2px rgba(0,0,0,.05);cursor:pointer}
+.tbtn{font-size:14px;font-weight:600;color:var(--mut);background:var(--card);padding:6px 12px;border-radius:8px;border:1px solid var(--line);box-shadow:0 1px 2px rgba(0,0,0,.05);cursor:pointer}
 .tbtn:hover{color:var(--blue)}
 
 /* panels */
 .panel{background:var(--blue-panel);border:1px solid var(--blue-line);border-radius:16px;padding:20px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
-.panel h3{margin:0;font-size:14px;font-weight:700;color:var(--blue)}
+.panel h3{margin:0;font-size:15.5px;font-weight:700;color:var(--blue)}
 .panel .ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px}
-.ulink{background:none;border:0;padding:0;color:var(--blue);font-size:12px;text-decoration:underline;cursor:pointer}
-.g4{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;font-size:12px}
+.ulink{background:none;border:0;padding:0;color:var(--blue);font-size:14px;text-decoration:underline;cursor:pointer}
+.g4{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;font-size:14px}
 @media (min-width:768px){.g4{grid-template-columns:repeat(4,1fr)}}
 .g4 label.l{display:flex;justify-content:space-between;gap:6px;color:var(--mut)}
 .g4 label.l .inc{white-space:nowrap}
-.winp,.minp{width:100%;border:1px solid var(--inp);border-radius:4px;padding:6px;text-align:right;font-weight:500;background:var(--card);font-size:12px}
-.pnote{margin:12px 0 0;font-size:12px;color:var(--mut)}
+.winp,.minp{width:100%;border:1px solid var(--inp);border-radius:4px;padding:6px;text-align:right;font-weight:500;background:var(--card);font-size:14px}
+.pnote{margin:12px 0 0;font-size:14px;color:var(--mut)}
 .scroll{overflow-x:auto;max-width:100%}
-table.cfg{border-collapse:collapse;font-size:12px;min-width:620px;width:100%}
+table.cfg{border-collapse:collapse;font-size:14px;min-width:620px;width:100%}
 table.cfg th,table.cfg td{padding:4px 5px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap;font-weight:400}
 table.cfg th{color:var(--mut)}
 table.cfg th:first-child,table.cfg td:first-child{text-align:left;white-space:normal;min-width:150px}
-table.cfg input{width:68px;border:1px solid var(--inp);border-radius:4px;padding:4px 5px;text-align:right;background:var(--card);font-size:12px}
-.sub3{margin:14px 0 6px;font-size:12px;font-weight:700;color:var(--ink)}
+table.cfg input{width:68px;border:1px solid var(--inp);border-radius:4px;padding:4px 5px;text-align:right;background:var(--card);font-size:14px}
+.sub3{margin:14px 0 6px;font-size:14px;font-weight:700;color:var(--ink)}
 
 /* sub cards */
-.stack{display:flex;flex-direction:column;gap:12px;font-size:12px}
-.g2{display:grid;grid-template-columns:1fr;gap:16px;font-size:12px}
+.stack{display:flex;flex-direction:column;gap:12px;font-size:14px}
+.g2{display:grid;grid-template-columns:1fr;gap:16px;font-size:14px}
 @media (min-width:768px){.g2{grid-template-columns:1fr 1fr}}
 .sub{background:var(--soft);padding:12px;border-radius:12px;border:1px solid var(--line)}
 .sub.red{background:var(--red-sub);border-color:var(--red-sub-line)}
@@ -124,75 +124,87 @@ table.cfg input{width:68px;border:1px solid var(--inp);border-radius:4px;padding
 .sub.pu{background:var(--pu-sub);border-color:var(--pu-sub-line)}
 .sub.off{display:flex;justify-content:space-between;align-items:center;gap:8px;border-style:dashed;color:var(--mut)}
 .sh{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
-.sn{font-weight:600;color:var(--strong);font-size:14px}
-.sub.red .sn,.sub.em .sn,.sub.pu .sn{font-size:12px;color:var(--ink)}
+.sn{font-weight:600;color:var(--strong);font-size:15.5px}
+.sub.red .sn,.sub.em .sn,.sub.pu .sn{font-size:14px;color:var(--ink)}
 .sg{color:var(--mut2);margin-left:4px}
 .res{font-weight:700}
 .res.blue{color:var(--blue)}.res.red{color:var(--red)}.res.em{color:var(--em)}.res.pu{color:var(--pu)}
 .m3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .m5{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 @media (min-width:560px){.m5{grid-template-columns:repeat(5,1fr)}}
-.m5 label{display:block;color:var(--mut);font-size:11px}
+.m5 label{display:block;color:var(--mut);font-size:12.5px}
 .m5 .minp{margin-top:2px}
 .subrow + .subrow{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
-.ft{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px;font-size:11px;color:var(--mut2);flex-wrap:wrap}
+.ft{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px;font-size:12.5px;color:var(--mut2);flex-wrap:wrap}
 .ft .acts{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.lnk{background:none;border:0;padding:0;color:var(--mut);font-size:11px;text-decoration:underline;cursor:pointer}
+.lnk{background:none;border:0;padding:0;color:var(--mut);font-size:12.5px;text-decoration:underline;cursor:pointer}
 .lnk:hover{color:var(--blue)}
 .fixed{display:flex;align-items:center;gap:6px;color:var(--amber);background:var(--amber-soft);padding:2px 8px;border-radius:6px}
-.fixed input{width:64px;border:1px solid var(--inp);border-radius:4px;padding:2px 4px;text-align:right;background:var(--card);font-size:11px}
+.fixed input{width:64px;border:1px solid var(--inp);border-radius:4px;padding:2px 4px;text-align:right;background:var(--card);font-size:12.5px}
 .minp.bad{border-color:var(--neg)}
-.incl{display:block;font-size:12px;font-weight:600;color:var(--mut);margin-top:2px}
+.incl{display:block;font-size:14px;font-weight:600;color:var(--mut);margin-top:2px}
 .incl.inc{color:var(--pos)}.incl.pen{color:var(--neg)}
 .legend{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:14px}
 @media (max-width:640px){.legend{grid-template-columns:repeat(4,1fr)}}
-.lg{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:6px 4px;text-align:center;font-size:11px;color:var(--mut);line-height:1.35}
-.lg b{display:block;font-size:15px;font-weight:900}
+.lg{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:6px 4px;text-align:center;font-size:12.5px;color:var(--mut);line-height:1.35}
+.lg b{display:block;font-size:16.5px;font-weight:900}
 .lg.cur{border-color:var(--blue);background:var(--blue-panel);color:var(--ink);box-shadow:0 0 0 1px var(--blue)}
 .lg .pc.inc{color:var(--pos);font-weight:600}.lg .pc.pen{color:var(--neg);font-weight:600}
 
 .lnk.on{color:var(--amber);font-weight:600;text-decoration:none}
 .mdet{color:var(--amber)}
 .mth{margin-top:10px;padding:10px;background:var(--card);border:1px solid var(--line);border-radius:8px}
-.mthn{font-size:11px;color:var(--mut);margin-bottom:6px}
+.mthn{font-size:12.5px;color:var(--mut);margin-bottom:6px}
 table.mt{min-width:560px}
 table.mt td.bs{color:var(--mut2)}
 table.mt .mck{display:flex;align-items:center;gap:4px;white-space:nowrap}
 table.mt input[type=number]{width:62px}
-table.mt td.rat{text-align:left;font-size:11px;color:var(--mut);white-space:normal}
+table.mt td.rat{text-align:left;font-size:12.5px;color:var(--mut);white-space:normal}
 table.mt td.rat input{width:70px}
 
-.qpick{display:inline-flex;align-items:center;gap:4px;background:#2563eb;color:#fff;font-size:14px;font-weight:700;padding:3px 12px;border-radius:999px}
+.qpick{display:inline-flex;align-items:center;gap:4px;background:#2563eb;color:#fff;font-size:15.5px;font-weight:700;padding:3px 12px;border-radius:999px}
 .qpick select{background:transparent;color:#fff;border:0;font:inherit;font-weight:700;padding:2px 0;cursor:pointer}
 .qpick select option{color:#0f172a;background:#fff}
-.qn{margin:8px 0 0;padding:8px 10px;border-radius:8px;background:var(--soft);border:1px solid var(--line);font-size:12px;color:var(--ink)}
+.qn{margin:8px 0 0;padding:8px 10px;border-radius:8px;background:var(--soft);border:1px solid var(--line);font-size:14px;color:var(--ink)}
 .qn.warn{background:var(--amber-soft);border-color:var(--amber);}
 .improw{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
-#imptext{width:100%;border:1px solid var(--inp);border-radius:8px;padding:8px;background:var(--card);font:inherit;font-size:12px;resize:vertical}
-.impmsg{margin-top:8px;font-size:12px;color:var(--ink)}
+#imptext{width:100%;border:1px solid var(--inp);border-radius:8px;padding:8px;background:var(--card);font:inherit;font-size:14px;resize:vertical}
+.impmsg{margin-top:8px;font-size:14px;color:var(--ink)}
 .impmsg.ok{color:var(--pos)}.impmsg.bad{color:var(--neg)}
 .impmsg div{margin-top:3px;color:var(--mut)}
-#impsheet{border:1px solid var(--inp);border-radius:6px;padding:4px 6px;background:var(--card);font-size:12px}
-#impfile{font-size:12px;max-width:100%}
+#impsheet{border:1px solid var(--inp);border-radius:6px;padding:4px 6px;background:var(--card);font-size:14px}
+#impfile{font-size:14px;max-width:100%}
 
 .minp.xd{opacity:.5;text-decoration:line-through;background:var(--soft)}
-.mxrow{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px;font-size:12px}
+.mxrow{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px;font-size:14px}
 .vf{margin-top:6px;font-weight:600}
 .vf.ok{color:var(--pos)}.vf.bad{color:var(--neg)}
 .vf .vc{font-weight:400;color:var(--mut)}
 .impmsg .pn{color:var(--amber)}
 
-.imgdrop{border:2px dashed var(--inp);border-radius:12px;padding:16px;text-align:center;font-size:12px;color:var(--mut);background:var(--card)}
+.imgdrop{border:2px dashed var(--inp);border-radius:12px;padding:16px;text-align:center;font-size:14px;color:var(--mut);background:var(--card)}
 .imgdrop:focus-visible{border-color:var(--blue)}
 #imgprev{max-width:100%;max-height:260px;border:1px solid var(--line);border-radius:8px;margin-top:8px;display:block}
 table.ex{margin:8px 0 4px;min-width:420px}
-.exck{display:block;margin:6px 0;font-size:12px;color:var(--ink)}
-.exn{font-size:11px;color:var(--mut);margin-bottom:6px}
+.exck{display:block;margin:6px 0;font-size:14px;color:var(--ink)}
+.exn{font-size:12.5px;color:var(--mut);margin-bottom:6px}
 .exn.ok{color:var(--pos)}.exn.bad{color:var(--neg)}
 
-.ver{margin-left:8px;font-size:12px;font-weight:700;color:var(--mut);background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:1px 9px;cursor:pointer;vertical-align:middle}
+.ver{margin-left:8px;font-size:14px;font-weight:700;color:var(--mut);background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:1px 9px;cursor:pointer;vertical-align:middle}
 .ver:hover{color:var(--blue);border-color:var(--blue)}
-.m1{display:grid;grid-template-columns:minmax(0,260px)}
+.m1{display:grid;grid-template-columns:minmax(0,1fr)}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:900px){.g3{grid-template-columns:minmax(0,1fr)}}
+.srch .sg{margin-left:0}
+.srch .shint{display:block;margin:2px 0 6px;line-height:1.4}
+.srch .srow + .srow{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
+.srch .slab{font-weight:600;color:var(--ink);margin-bottom:4px}
+.srch .sres{margin:6px 0 2px;text-align:left}
+.minp,.winp{font-size:14.5px;padding:8px 9px}
+.resbox{flex:0 0 auto}
+.resbox .lab,.resbox .gr,.resbox .incl,.score{white-space:nowrap}
+.resbox .incl{text-align:center}
+.dtop>div:first-child{flex:1 1 0;min-width:0}
 #report{display:none}
 .rp-head h1{margin:0;font-size:20pt;color:#0f172a}
 .rp-sub{font-size:10pt;color:#475569;margin-top:2px}
@@ -244,7 +256,7 @@ table.ex{margin:8px 0 4px;min-width:420px}
         <div class="titlerow">
           <span class="qpick"><select id="ysel" aria-label="연도"><option>2025</option><option>2026</option><option>2027</option><option>2028</option></select>년
             <select id="qsel" aria-label="분기"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select>분기</span>
-          <h1>장소데이터팀 SLA 성과 시뮬레이터</h1><button type="button" class="ver" id="verbtn" data-act="togver">v1.1</button>
+          <h1>장소데이터팀 SLA 성과 시뮬레이터</h1><button type="button" class="ver" id="verbtn" data-act="togver">v1.2</button>
         </div>
         <p class="note" id="note"></p>
         <div id="qnote"></div>
@@ -1253,7 +1265,7 @@ function parseAdjustText(text){
 }
 //</extract>
 
-const APP_VERSION='v1.1',APP_DATE='2026-10-14';
+const APP_VERSION='v1.2',APP_DATE='2026-10-14';
 
 /* ---------- 상태: 분기별로 따로 저장 ---------- */
 const STORE='sla-sim-jangso-v4';
@@ -1328,7 +1340,7 @@ const rd=v=>{if(v===''||v==null)return '';return Number(String(v).replace(/,/g,'
 const mInput=(attr,key,k,val,label,xd)=>`<input class="minp${xd?' xd':''}" type="number" inputmode="decimal" step="any" ${attr}="${key}:${k}" value="${val}" placeholder="${ML()[k]}" aria-label="${esc(label)} ${ML()[k]}" title="${ML()[k]}${xd?' (평가에서 제외됨)':''}">`;
 const hintOf=c=>{
   const s=c.dir==='low'?'≤':'≥';
-  return `(기준: ${isNum(c.p100)?`100점 ${s}${fmtN(c.p100)} / `:''}O ${s}${fmtN(c.th[0])} / S ${s}${fmtN(c.th[1])} / E ${s}${fmtN(c.th[2])} / M ${s}${fmtN(c.th[3])}${c.avgOnly?' · 분기 평균 값 한 칸':''})`;
+  return `(기준: ${isNum(c.p100)?`100점 ${s}${fmtN(c.p100)} / `:''}O ${s}${fmtN(c.th[0])} / S ${s}${fmtN(c.th[1])} / E ${s}${fmtN(c.th[2])} / M ${s}${fmtN(c.th[3])})`;
 };
 const valText=(c,v)=>c.unit==='시간'?v.toFixed(2):fmtN(v);
 const scaleV=(x,r)=>Math.abs(x)>=100?Math.round(x*r):Math.round(x*r*100)/100;
@@ -1396,14 +1408,16 @@ function cardSingle(ti,theme,cls){
     <div class="m3">${c.m.map((v,k)=>mInput('data-m',c.id,k,v,t.name,c.x&&c.x[k])).join('')}</div>
     ${footerHTML(ti,c,{fix:true,excl:true})}</div>`;
 }
-function cardMulti(ti){
+function cardSearch(ti){
   const t=S.tasks[ti];
   if(t.on===false)return offCard(ti);
-  return `<div class="sub">
-    <div class="sh"><div><span class="sn">${esc(t.name)}</span><span class="sg">(${t.crit.map(c=>`${c.label} ${Math.round(c.cw*100)}%`).join(' + ')})</span></div><span class="res blue" data-tres="${ti}"></span></div>
-    ${t.crit.map(c=>`<div class="subrow">
-      <div class="sh"><div><span style="color:var(--ink);font-weight:600">${esc(c.label)}(${UNIT(c.unit)})</span><span class="sg" data-hint="${c.id}"></span></div><span class="res blue" data-res="${c.id}"></span></div>
-      ${c.avgOnly?`<div class="m1"><input class="minp" type="number" inputmode="decimal" step="any" data-m="${c.id}:0" value="${c.m[0]}" placeholder="분기 평균" aria-label="${esc(t.name)} ${esc(c.label)} 분기 평균" title="분기 평균을 한 칸에 입력해요"></div>`:`<div class="m3">${c.m.map((v,k)=>mInput('data-m',c.id,k,v,t.name+' '+c.label,c.x&&c.x[k])).join('')}</div>`}
+  return `<div class="sub srch">
+    <div class="sh"><span class="sn">${esc(t.name)}</span><span class="res blue" data-tres="${ti}"></span></div>
+    ${t.crit.map(c=>`<div class="srow">
+      <div class="slab">${esc(c.label)}(${UNIT(c.unit)}) <span class="sg">비중 ${Math.round(c.cw*100)}%</span></div>
+      <div class="m1"><input class="minp" type="number" inputmode="decimal" step="any" data-m="${c.id}:0" value="${c.m[0]}" placeholder="분기 평균" aria-label="${esc(t.name)} ${esc(c.label)} 분기 평균" title="분기 평균을 한 칸에 입력해요"></div>
+      <div class="res blue sres" data-res="${c.id}"></div>
+      <div class="sg shint" data-hint="${c.id}"></div>
       ${footerHTML(ti,c,{fix:false,excl:false})}</div>`).join('')}
     <div class="ft"><span></span><span class="acts"><button type="button" class="lnk" data-act="excl" data-ti="${ti}">이번 분기 평가 제외</button></span></div></div>`;
 }
@@ -1416,8 +1430,8 @@ function buildSections(){
   const bil=S.tasks[3].on===false;
   $('sec-quant').innerHTML=`<div class="card"><div class="ch"><span class="ico" style="color:var(--blue)">📊</span><h2>정량 업무 처리건수 (월별 입력 → 분기 평균 반영)</h2><span class="right">${bil?'빌보드 제외됨':''}</span></div>
     <div class="stack">${[5,4,1,3,...(S.tasks[9]&&S.tasks[9].on!==false?[9]:[])].map(ti=>cardSingle(ti,'blue')).join('')}
-    <div class="sn" style="margin-top:6px;font-size:12px">검결없 · 메뉴검색 · 메타키워드 <span class="sg">(오류율 70% + 처리건 30%)</span></div>
-    ${[6,7,8].map(cardMulti).join('')}</div></div>`;
+    <div class="sn" style="margin-top:8px;font-size:15px">검결없 · 메뉴검색 · 메타키워드 <span class="sg">(오류율 70% + 처리건 30% · 분기 평균 값을 한 칸에 입력)</span></div>
+    <div class="g3">${[6,7,8].map(cardSearch).join('')}</div></div></div>`;
   $('sec-delay').innerHTML=`<div class="card"><div class="ch"><span class="ico" style="color:var(--em)">⏱️</span><h2>기한준수 지연율 (%)</h2></div>
     <p class="pnote" style="margin:-4px 0 10px">기한 안에 처리하지 못한 비율이에요. CP는 작업 생성일 기준 5일 초과 건수 ÷ 총 작업처리건수, 장소제보 처리는 인입일 기준 3일 초과 제보 건수 ÷ 총 인입 제보 건수예요. 월별로 구한 지연율(%)을 입력하면 평균으로 계산해요.</p>
     <div class="g2">${[0,2].map(ti=>cardSingle(ti,'em','em')).join('')}</div></div>`;
@@ -1458,10 +1472,9 @@ function buildImport(){
   <div class="improw"><input type="file" id="impfile" accept=".xlsx,.xls,.csv,.tsv,.txt,image/*" aria-label="파일 선택"><select id="impsheet" class="hidden" aria-label="불러올 시트"></select><button type="button" class="tbtn hidden" id="impsheetbtn" data-act="impsheet">이 시트로 불러오기</button></div>
   <textarea id="imptext" rows="8" aria-label="붙여넣기" placeholder="후정제  30177  29221  28951&#10;프랜차이즈  18011  23859  23084&#10;검결없 오류율  0.4  0.4  0.4&#10;장소 제보 오류  2  2  1&#10;CSI 장소 역량  82&#10;(월별 목표량 조정 공지 글을 그대로 붙여넣어도 돼요)"></textarea>
   <div class="improw"><button type="button" class="tbtn" data-act="imptext">붙여넣은 내용 불러오기</button><button type="button" class="tbtn" data-act="exptext">현재 입력값을 텍스트로 채우기</button><button type="button" class="tbtn" data-act="expcfg">현재 기준·비중을 텍스트로 채우기</button></div>
-  <p class="pnote" style="margin:4px 0 0">기준표 이미지는 글씨가 작거나 색 칸이 많으면 자동으로 읽기 어려워요. 그럴 땐 이미지를 Claude 대화에 올려서 <b>"기준 후정제 31460 30600 …"</b> 같은 줄로 받아 위 칸에 붙여넣으면 정확히 반영돼요 (한 줄에 100점·98점·94점·90점·82점·50점·마지막 열 순서, 달마다 다르면 "기준 프랜차이즈 5월 …", 그 밖에 "비중 후정제 0.0351", "제외 빌보드"). 위 칸에는 이런 줄을 섞어 써도 돼요.</p>
+  <p class="pnote" style="margin:4px 0 0">붙여넣기 칸에는 <b>"기준 후정제 31460 30600 …"</b>처럼 한 줄에 100점·98점·94점·90점·82점·50점·마지막 열 순서로 적은 기준 줄을 넣을 수 있어요. 달마다 다르면 "기준 프랜차이즈 7월 …", 그 밖에 "비중 후정제 0.0351", "제외 빌보드"도 돼요. 이런 줄을 섞어 써도 돼요.</p>
   <div id="imp-msg" class="impmsg" role="status"></div>
-  <div class="sub3">이미지·표 불러오기</div>
-  <div id="imgbox">
+  <div id="imgbox"><div class="sub3">이미지·표 불러오기</div>
     <div id="imgstat" class="exn">이미지 읽기 기능을 확인하는 중…</div>
     <div class="imgdrop" id="imgdrop" tabindex="0">📷 월별 목표량 조정 안내, 기준표, 실적 표 등의 <b>스크린샷을 이 화면에 붙여넣기(Ctrl+V)</b>하거나, 이미지 파일을 끌어다 놓거나 위 "파일 선택"으로 올려요</div>
     <img id="imgprev" class="hidden" alt="붙여넣은 이미지 미리보기">
@@ -1820,17 +1833,14 @@ function updateImgAvail(){
   if(!$('imgbox'))return;
   if(ok){st.className='exn ok';st.textContent='✓ 이미지 읽기를 쓸 수 있어요. 스크린샷을 붙여넣으면 바로 읽어서 미리보기를 보여드려요.';return;}
   if(LOCAL_OCR){setLocalStatus();return;}
-  st.className='exn';
-  st.textContent='이 화면은 이미지를 읽지 않아요 (실제 화면 캡처는 정확도가 낮아서 뺐어요).';
-  $('imgdrop').innerHTML='📋 표·공지는 <b>글자를 복사해서</b> 위 "붙여넣기" 칸에 넣거나, 이미지를 <b>Claude 대화에 올려서</b> 정리된 텍스트("기준 …" 줄, "검결없 / 7월 …" 블록)를 받아 붙여넣어 주세요.';
-  $('imgnote').classList.add('hidden');
+  $('imgbox').classList.add('hidden');   // 이미지를 읽지 않는 화면에서는 이 영역을 아예 보이지 않게 한다
   const fi=$('impfile');if(fi)fi.accept='.xlsx,.xls,.csv,.tsv,.txt';
 }
 const imgOK=()=>!!(SAMPLE&&IMGLIM&&IMGLIM.images);
 const LOCAL_OCR=!!document.getElementById('kor-b64'); // 단독 HTML 파일에만 들어 있는 오프라인 글자 읽기(OCR)
 function openImp(){$('imp-panel').classList.remove('hidden');}
 function setImage(f){
-  if(!imgOK()&&!LOCAL_OCR){$('imgout').className='impmsg';$('imgout').innerHTML='이 화면은 이미지를 읽지 않아요. 표나 공지는 <b>글자를 복사해서</b> 위 "붙여넣기" 칸에 넣거나, 이미지를 <b>Claude 대화에 올려서</b> 정리된 텍스트("기준 …" 줄이나 "검결없 / 7월 …")를 받아 붙여넣어 주세요.';return;}
+  if(!imgOK()&&!LOCAL_OCR){showImp('이미지는 읽지 않아요. 표나 공지는 글자를 복사해서 위 "붙여넣기" 칸에 넣어주세요.','');return;}
   if(imgOK()){
     const lim=IMGLIM.images;
     if(lim.mediaTypes&&lim.mediaTypes.length&&!lim.mediaTypes.includes(f.type)){showImg('이 이미지 형식('+f.type+')은 읽을 수 없어요. PNG나 JPEG로 붙여넣어 주세요.','bad');return;}
@@ -2218,6 +2228,7 @@ document.addEventListener('input',e=>{
 },true);
 
 const CHANGELOG=[
+  ['v1.2','2026-10-14',['검색 3개 업무(검결없·메뉴검색·메타키워드)를 한 줄에 나란히 배치','글자 크기를 전체적으로 키워서 읽기 쉽게 했어요','이미지·표 불러오기 영역을 화면에서 뺐어요 (이미지를 읽지 않는 화면에서는 보이지 않아요)']],
   ['v1.1','2026-10-14',['검색 3개 업무(검결없·메뉴검색·메타키워드)는 분기 평균 값 한 칸으로 입력','이미지 글자 읽기를 뺐어요 (이미지는 Claude 대화에서 텍스트로 정리해 붙여넣기). 파일 크기도 크게 줄었어요','"검결없 / 7월 5,101 / 8월 …" 형식의 월별 값 텍스트 붙여넣기 지원 (줄 끝 메모는 따로 알려줘요)','화면에 버전 표시, 변경 내역 보기']],
   ['v1.0','이전 배포본 (버전 표기 없음)',['분기 선택, 2026년 3분기 기준표, 채점 방식 선택, 엑셀·텍스트 불러오기, 팀 작업 시트 불러오기, 결과 PDF, 숫자 3자리 콤마']]
 ];
