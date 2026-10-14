@@ -749,11 +749,11 @@ function defaultFor(key){
   return D;
 }
 
-const num=v=>(v===''||v==null||isNaN(Number(v)))?0:Number(v);
+const num=v=>{if(v===''||v==null)return 0;const n=Number(String(v).replace(/,/g,''));return isNaN(n)?0:n;};
 const r2=x=>Math.round((x+Number.EPSILON)*100)/100;
 const gradeOf=s=>{for(let i=0;i<CUT.length;i++)if(s>CUT[i])return i;return CUT.length;};
 const hasOv=c=>c.ov!==''&&c.ov!=null&&!isNaN(Number(c.ov));
-const isNum=x=>x!==''&&x!=null&&!isNaN(Number(x));
+const isNum=x=>x!==''&&x!=null&&!isNaN(Number(String(x).replace(/,/g,'')));
 const filled=a=>a.filter(isNum).map(Number);
 function aggOf(arr,agg){
   const xs=filled(arr);
@@ -855,7 +855,7 @@ const qMonths=key=>{const q=+String(key).split('-')[1];return [3*q-2,3*q-1,3*q].
 const CSI_ITEMS=['역량','일정','적극','태도','품질'];
 function taskIdxByName(raw){
   const n=normS(raw);
-  if(n.includes('장소제보처리'))return 0;
+  if(n.includes('장소제보처리')||(n.includes('제보처리')&&!n.includes('품질평가')))return 0;
   if(n.includes('영업시간'))return 1;
   if(/^cp/.test(n))return 2;
   if(n.includes('빌보드'))return 3;
@@ -1296,6 +1296,87 @@ function exportConfigText(S){
   S.tasks.filter(t=>t.on===false).forEach(t=>L.push(`제외 ${t.name}`));
   return L.join('\n');
 }
+// ===== 팀 작업 시트 형식 =====
+// 머리글 줄에 "수행업무명 · 평가기준 · O등급-상한(100점) … N등급-하한(0점) · 7월 8월 9월 · 전체 모수 · 오류건 · 차감 점수"가 있고
+// 업무마다 기준표와 월별 실적이 한 줄에 있는 시트 (기준값 칸은 "31,460건 미만"처럼 글자가 섞여 있어도 숫자를 읽는다)
+function parseCellNum(v){
+  if(typeof v==='number')return v;
+  const t=String(v==null?'':v).match(/-?\d[\d,]*(?:\.\d+)?/);
+  return t?Number(t[0].replace(/,/g,'')):NaN;
+}
+function teamHeader(aoa){
+  for(let i=0;i<Math.min(aoa.length,20);i++){
+    const h=(aoa[i]||[]).map(x=>String(x==null?'':x).replace(/\s+/g,''));
+    const cName=h.findIndex(x=>x.includes('수행업무명'));
+    if(cName<0)continue;
+    const months=[];h.forEach((x,j)=>{const mm=x.match(/^(\d{1,2})월$/);if(mm)months.push({col:j,month:Number(mm[1])});});
+    if(!months.length)continue;
+    const pts=[100,98,94,90,82,50,0].map(p=>h.findIndex(x=>x.includes('('+p+'점)')));
+    return{row:i,cName,cCrit:h.findIndex(x=>x.startsWith('평가기준')),cDetail:h.findIndex(x=>x.startsWith('평가상세')),
+      pts,months,cMod:h.findIndex(x=>x.includes('전체모수')),cErr:h.findIndex(x=>x==='오류건'),cPen:h.findIndex(x=>x.includes('차감점수'))};
+  }
+  return null;
+}
+const isTeamSheet=aoa=>{const h=teamHeader(aoa);return !!(h&&h.pts.filter(x=>x>=0).length>=6);};
+// 월 머리글(7월…)과 파일 이름의 연도로 분기 알아내기
+function detectTeamKey(aoa,fileName,curKey){
+  const h=teamHeader(aoa);if(!h)return null;
+  const q=Math.ceil(Math.min(...h.months.map(x=>x.month))/3);
+  const y=(String(fileName||'').match(/(20\d{2})/)||[])[1]||String(curKey).split('-')[0];
+  return `${y}-${q}`;
+}
+function importTeamSheet(S,aoa){
+  const rep={ok:[],miss:[],notes:[],pins:[]};
+  const h=teamHeader(aoa);
+  if(!h)return null;
+  const q=+String(S.key).split('-')[1],m0=3*(q-1)+1;
+  const cell=(r,c)=>c>=0?r[c]:'';
+  for(let i=h.row+1;i<aoa.length;i++){
+    const r=aoa[i]||[];
+    const name=String(cell(r,h.cName)==null?'':cell(r,h.cName)).replace(/\s+/g,' ').trim();
+    if(!name)continue;
+    // 품질평가(오류건) 줄: 전체 모수·오류건·차감 점수
+    const err=cell(r,h.cErr);
+    if(err!==''&&!isNaN(Number(err))){
+      const ei=errIdxByName(name);
+      if(ei>=0){
+        const n=Number(err),e=S.errs[ei];
+        e.m=[n,0,0];   // 파일에는 달별 오류건이 없고 합계만 있어서 첫 달에 합계를 넣는다
+        const per=num(e.perN)>0?num(e.perN):2,pt=isNum(e.pt)?Number(e.pt):1;
+        const mine=(-Math.floor(n/per+1e-9)*pt)||0,fp=parseCellNum(cell(r,h.cPen));
+        rep.ok.push(`${e.name} 오류 ${n}건 (표본 ${parseCellNum(cell(r,h.cMod))||'?'}건)`);
+        rep.notes.push(`${e.name}: 파일에는 달별 오류건이 없고 합계만 있어서 첫 달 칸에 ${n}건을 넣었어요`);
+        if(!isNaN(fp)&&Math.abs(fp-mine)>0.01)rep.notes.push(`${e.name}: 파일의 차감 점수(${fp})와 계산(${mine})이 달라요. 오류차감 규칙을 확인해주세요`);
+        continue;
+      }
+    }
+    const ti=taskIdxByName(name);
+    const vals=h.pts.map(c=>c>=0?parseCellNum(r[c]):NaN);
+    const hasTh=vals.filter(x=>!isNaN(x)).length>=7;
+    const mv={};h.months.forEach(({col,month})=>{const k=month-m0;if(k>=0&&k<=2)mv[k]=r[col];});
+    const hasMonths=Object.keys(mv).some(k=>mv[k]!==''&&mv[k]!=null);
+    if(ti<0){
+      if(/메뉴판/.test(name)&&hasMonths){
+        const need=parseCellNum(cell(r,h.pts[0]));
+        const ks=[0,1,2].filter(k=>mv[k]!==''&&mv[k]!=null);
+        rep.notes.push(`메뉴판(정성 평가)은 점수 계산에 넣지 않아요. 월 최소 ${isNaN(need)?'':fmtK(need)}건 기준: ${ks.map(k=>`${m0+k}월 ${fmtK(Number(mv[k]))}건${!isNaN(need)?(Number(mv[k])>=need?' ✓':' ✗'):''}`).join(' · ')}`);
+      }
+      continue;
+    }
+    const t=S.tasks[ti],c=t.crit[0];
+    if(!hasTh){
+      if(t.on===false){if(hasMonths&&/품질평가/.test(String(cell(r,h.cDetail))))rep.notes.push(`${t.name}: 품질평가에 포함돼서 정량 평가는 계속 제외해요`);continue;}
+      if(!hasMonths)continue;
+    }
+    if(hasTh){critFromVals(c,vals);if(c.avgOnly)c.mth=[null,null,null];rep.ok.push(`${t.name} 기준표`);}
+    if(hasMonths){
+      c.m=[0,1,2].map(k=>monthVal(mv[k],c.dir==='high'));
+      c.x=[false,false,false];c.ov='';
+      rep.ok.push(`${t.name} 월별 실적 ${c.m.map(x=>x===''?'–':fmtK(x)).join(' / ')}`);
+    }
+  }
+  return rep;
+}
 // 월별 실적 행 → 텍스트 불러오기 형식
 function valuesToText(S,rows){
   const q=+String(S.key).split('-')[1],m0=3*(q-1)+1;
@@ -1465,7 +1546,7 @@ const ML=()=>qMonths(S.key);
 const qShort=k=>`${k.split('-')[1]}분기`;
 const qLabel=k=>`${k.split('-')[0]}년 ${k.split('-')[1]}분기`;
 const critById=id=>{for(const t of S.tasks)for(const c of t.crit)if(c.id===id)return c;return null;};
-const rd=v=>v===''?'':Number(v);
+const rd=v=>{if(v===''||v==null)return '';return Number(String(v).replace(/,/g,''));};
 const mInput=(attr,key,k,val,label,xd)=>`<input class="minp${xd?' xd':''}" type="number" inputmode="decimal" step="any" ${attr}="${key}:${k}" value="${val}" placeholder="${ML()[k]}" aria-label="${esc(label)} ${ML()[k]}" title="${ML()[k]}${xd?' (평가에서 제외됨)':''}">`;
 const hintOf=c=>{
   const s=c.dir==='low'?'≤':'≥';
@@ -1774,6 +1855,15 @@ function importSheet(name){
       '평가한 달은 파일의 성과값으로 추정했고, 달마다 조정된 목표량은 파일에 없어서 점수가 다르면 고정했어요.'),rep.verify&&!rep.verify.ok?'bad':'ok');
   }else{
     const aoa=X.utils.sheet_to_json(ws,{header:1,defval:''});
+    if(isTeamSheet(aoa)){   // 기준표 옆에 월별 실적·오류건이 붙어 있는 팀 작업 시트
+      const key=detectTeamKey(aoa,pending.fileName,S.key);
+      if(key&&key!==S.key)setQuarter(key);
+      const rep=importTeamSheet(S,aoa);
+      openMth.clear();init();
+      showImp(reportHTML(`${qLabel(S.key)} (${name}) 시트에서 ${rep.ok.length}개 항목을 불러왔어요.`,rep,
+        '이 파일에는 검색 3개 업무·CSI 점수·비중이 없어서 그 부분은 그대로 뒀어요. 달마다 목표가 다르게 운영된 업무는 항목 아래 "월 제외·목표 조정"에서 맞춰주세요.'),'ok');
+      return;
+    }
     const txt=aoa.map(r=>r.join('\t')).join('\n');
     $('imptext').value=txt;
     runTextImport(txt);
@@ -1828,7 +1918,7 @@ document.addEventListener('input',e=>{
     if(!o)return;
     if(+j===0)o.p100=rd(el.value);else o.th[+j-1]=rd(el.value);
     if(+j===4){ // M 목표량을 넣으면 나머지 등급은 기본 기준의 비율로 자동 계산
-      const T=Number(el.value),bm=num(c.th[3]);
+      const T=num(el.value),bm=num(c.th[3]);
       if(T>0&&bm>0){
         const r=T/bm;
         o.th=c.th.map(x=>scaleV(num(x),r));o.th[3]=T;
@@ -1836,7 +1926,7 @@ document.addEventListener('input',e=>{
         for(let jj=0;jj<8;jj++){
           if(jj===4)continue;
           const inp=document.querySelector(`[data-mt="${id}:${k}:${jj}"]`);
-          if(inp)inp.value=jj===0?(isNum(o.p100)?o.p100:''):o.th[jj-1];
+          if(inp)inp.value=fmtIn(jj===0?(isNum(o.p100)?o.p100:''):o.th[jj-1]);
         }
       }
     }
@@ -1867,13 +1957,15 @@ document.addEventListener('change',e=>{
         const buf=await readFile(f,'buf');
         const wb0=X.read(buf,{type:'array',bookSheets:true});
         const raws=wb0.SheetNames.filter(n=>/raw/i.test(n));
-        pending={buf,names:wb0.SheetNames};
+        pending={buf,names:wb0.SheetNames,fileName:f.name};
+        const cands=raws.length?raws:wb0.SheetNames;
         const sel=$('impsheet'),btn=$('impsheetbtn');
-        if(raws.length>1){
-          sel.innerHTML=raws.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+        if(cands.length>1){
+          sel.innerHTML=cands.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
           sel.classList.remove('hidden');btn.classList.remove('hidden');
         }else{sel.classList.add('hidden');btn.classList.add('hidden');}
-        importSheet(raws.length?raws[0]:wb0.SheetNames[0]);
+        const first=raws.length?raws[0]:cands[cands.length-1];   // 결과 파일은 맨 앞이, 팀 작업 시트는 맨 뒤가 가장 최근 분기
+        sel.value=first;importSheet(first);
       }catch(err){
         showImp('엑셀을 읽지 못했어요. 엑셀 읽기 도구를 내려받지 못했을 수 있어요(사내망 차단 등). CSV로 저장하거나 엑셀에서 복사해 아래 칸에 붙여넣어 주세요.','bad');
       }
@@ -1891,7 +1983,7 @@ document.addEventListener('click',e=>{
   else if(a==='mfill'){
     const c=critById(b.dataset.id),k=+b.dataset.k,o=c.mth[k];
     const inp=document.querySelector(`[data-mratio="${b.dataset.id}:${k}"]`);
-    const r=inp?Number(inp.value):NaN;
+    const r=inp?num(inp.value):NaN;
     if(o&&r>0){o.th=c.th.map(x=>scaleV(num(x),r));o.p100=isNum(c.p100)?scaleV(Number(c.p100),r):'';init();}
   }
   else if(a==='togw'){$('weight-panel').classList.toggle('hidden');}
@@ -2297,7 +2389,46 @@ function printReport(){
 window.addEventListener('beforeprint',renderReport);   // Ctrl+P로 인쇄해도 같은 보고서가 나온다
 window.addEventListener('afterprint',()=>{if(titleBackup!==null){document.title=titleBackup;titleBackup=null;}});
 
-function init(){buildSections();buildWeights();buildCfg();update();}
+
+/* ---------- 숫자 입력칸: 3자리마다 쉼표 (2,000 / 50,000) ---------- */
+const fmtIn=v=>{
+  if(v===''||v==null)return '';
+  const n=Number(String(v).replace(/,/g,''));
+  if(isNaN(n))return String(v);
+  return new Intl.NumberFormat('en-US',{maximumFractionDigits:10}).format(n);
+};
+function fmtTyping(str){
+  let s=String(str).replace(/[^\d.\-]/g,'');
+  const neg=s.startsWith('-');s=s.replace(/-/g,'');
+  const i=s.indexOf('.');
+  let ip=i>=0?s.slice(0,i):s;
+  const dp=i>=0?s.slice(i+1).replace(/\./g,''):null;
+  ip=ip.replace(/^0+(?=\d)/,'').replace(/\B(?=(\d{3})+(?!\d))/g,',');
+  return (neg?'-':'')+ip+(dp!==null?'.'+dp:'');
+}
+function enhanceInputs(){
+  document.querySelectorAll('input[type=number]').forEach(el=>{
+    const v=el.value;
+    el.type='text';el.inputMode='decimal';el.dataset.fmt='1';el.autocomplete='off';
+    el.value=fmtIn(v);
+  });
+}
+// 먼저 실행되도록 capture 단계에서 쉼표를 넣고, 커서 위치는 숫자 개수로 맞춘다
+document.addEventListener('input',e=>{
+  const el=e.target;
+  if(!el||!el.dataset||el.dataset.fmt!=='1')return;
+  const old=el.value,pos=el.selectionStart==null?old.length:el.selectionStart;
+  const sig=old.slice(0,pos).replace(/[^\d.\-]/g,'').length;
+  const nv=fmtTyping(old);
+  if(nv!==old){
+    el.value=nv;
+    let c=0,np=0;
+    while(np<nv.length&&c<sig){if(/[\d.\-]/.test(nv[np]))c++;np++;}
+    try{el.setSelectionRange(np,np);}catch(err){}
+  }
+},true);
+
+function init(){buildSections();buildWeights();buildCfg();enhanceInputs();update();}
 buildImport();
 syncQsel();
 init();
