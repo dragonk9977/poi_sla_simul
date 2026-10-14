@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>장소데이터팀 SLA 성과 시뮬레이터 v1.4</title>
+<title>장소데이터팀 SLA 성과 시뮬레이터 v1.5</title>
 <style>
 :root{
   box-sizing:border-box;
@@ -192,6 +192,7 @@ table.ex{margin:8px 0 4px;min-width:420px}
 
 .ver{margin-left:8px;font-size:14px;font-weight:700;color:var(--mut);background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:1px 9px;cursor:pointer;vertical-align:middle}
 .ver:hover{color:var(--blue);border-color:var(--blue)}
+.ver.sp{color:var(--blue);border-color:var(--blue);background:var(--blue-panel)}
 .m1{display:grid;grid-template-columns:minmax(0,1fr)}
 .g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 @media (max-width:900px){.g3{grid-template-columns:minmax(0,1fr)}}
@@ -269,7 +270,7 @@ table.gd tr.gh td{background:var(--soft);text-align:left;white-space:normal;font
         <div class="titlerow">
           <span class="qpick"><select id="ysel" aria-label="연도"><option>2025</option><option>2026</option><option>2027</option><option>2028</option></select>년
             <select id="qsel" aria-label="분기"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select>분기</span>
-          <h1>장소데이터팀 SLA 성과 시뮬레이터</h1><button type="button" class="ver" id="verbtn" data-act="togver">v1.4</button>
+          <h1>장소데이터팀 SLA 성과 시뮬레이터</h1><button type="button" class="ver" id="verbtn" data-act="togver">v1.5</button><button type="button" class="ver sp hidden" id="sharepill" data-act="togs"></button>
         </div>
         <p class="note" id="note"></p>
         <div id="qnote"></div>
@@ -1373,7 +1374,7 @@ function parseAdjustText(text){
 }
 //</extract>
 
-const APP_VERSION='v1.4',APP_DATE='2026-10-14';
+const APP_VERSION='v1.5',APP_DATE='2026-10-14';
 
 /* ---------- 상태: 분기별로 따로 저장 ---------- */
 const STORE='sla-sim-jangso-v4';
@@ -1384,6 +1385,15 @@ function normState(st){
   const D0=makeDef();
   while(st.tasks.length<D0.tasks.length)st.tasks.push(JSON.parse(JSON.stringify(D0.tasks[st.tasks.length])));   // 맵데이터연결(2025년 1·2분기 업무) 추가분
   st.tasks.forEach(t=>t.crit.forEach(c=>{if(!Array.isArray(c.x))c.x=[false,false,false];}));
+  {  // 기준값 순서가 맞지 않으면(예전에 잘못 읽힌 값 등) 기본값으로 되돌린다
+    const D1=makeDef();
+    st.tasks.forEach((t,ti)=>t.crit.forEach((c,ci)=>{
+      const th=(c.th||[]).slice(0,6).map(Number),hi=c.dir!=='low';
+      const bad=th.length<6||th.some(x=>!isFinite(x))||th.some((x,i)=>i>0&&(hi?x>th[i-1]:x<th[i-1]));
+      const d=D1.tasks[ti]&&D1.tasks[ti].crit[ci];
+      if(bad&&d){c.th=d.th.slice();c.p100=d.p100;}
+    }));
+  }
   if(st.tasks[0]&&st.tasks[0].crit[0]){st.tasks[0].crit[0].unit='%';st.tasks[0].crit[0].label='지연율';}   // 기한준수는 시간이 아니라 지연율(%)
   [6,7,8].forEach(i=>{const t=st.tasks[i];if(t)t.crit.forEach(c=>{c.avgOnly=true;c.mth=[null,null,null];if(filled(cm(c)).length>1||(c.m&&c.m[0]===''&&filled(c.m).length))collapseAvg(c);});}); // 검색 3개 업무: 월별 기준 없이 분기 평균 한 값
   if(applyKnownTargets(st))st.known3Seen=false;   // 3분기 평균 목표표를 처음 한 번 반영
@@ -1740,6 +1750,7 @@ function reportHTML(title,rep,extra){
   return h;
 }
 function importSheet(name){
+  markDirty();
   const X=window.XLSX;
   const wb=X.read(pending.buf,{type:'array',sheets:[name]});
   const ws=wb.Sheets[name];
@@ -1772,6 +1783,7 @@ function importSheet(name){
   }
 }
 function runTextImport(txt){
+  markDirty();
   {
     const cfg=parseConfigText(txt);
     if(cfg.hit){
@@ -1816,6 +1828,7 @@ function runTextImport(txt){
 /* ---------- 이벤트 ---------- */
 document.addEventListener('input',e=>{
   const el=e.target,d=el.dataset;if(!d)return;
+  if(el.tagName==='INPUT'&&Object.keys(d).length)markDirty();   // 값을 직접 고침
   if(d.m){const [id,k]=d.m.split(':');const cc=critById(id);cc.m[+k]=rd(el.value);if(cc.avgOnly){cc.m[1]='';cc.m[2]='';}}
   else if(d.em){const [ei,k]=d.em.split(':').map(Number);S.errs[ei].m[k]=rd(el.value);}
   else if(d.ov){critById(d.ov).ov=rd(el.value);}
@@ -1849,6 +1862,7 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('change',e=>{
   const el=e.target,d=el.dataset||{};
+  if(d.ton!==undefined||d.mx||d.mton)markDirty();
   if(d.ton!==undefined){S.tasks[+d.ton].on=el.checked;init();}
   else if(d.mx){const [id,k]=d.mx.split(':');const c=critById(id);if(!c.x)c.x=[false,false,false];c.x[+k]=!el.checked;init();}
   else if(d.mton){const [id,k]=d.mton.split(':');const c=critById(id);c.mth[+k]=el.checked?{th:c.th.slice(),p100:c.p100}:null;init();}
@@ -1886,6 +1900,7 @@ document.addEventListener('change',e=>{
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act;
+  if(['clear','defaults','excl','incl','resetw','resetc','smtog','addov','clrov','mfill','imgapply','confirmq'].includes(a))markDirty();
   if(a==='excl'){S.tasks[+b.dataset.ti].on=false;init();}
   else if(a==='incl'){S.tasks[+b.dataset.ti].on=true;init();}
   else if(a==='addov'){const c=critById(b.dataset.id);c.ov='';c.ov=r2(critScore(c));init();}
@@ -1906,9 +1921,10 @@ document.addEventListener('click',e=>{
   else if(a==='shsave'){shareSave();}
   else if(a==='shfile'){shareFile();}
   else if(a==='shforget'){try{localStorage.removeItem(SH_TOKEN);}catch(e){}$('gh-token').value='';shMsg('저장된 토큰을 지웠어요.','ok');}
-  else if(a==='shload'){if(SHARED&&applyShared(SHARED,true)){shSet({seenAt:SHARED.savedAt});shMsg('공유 데이터를 불러왔어요.','ok');}else shMsg('불러올 공유 데이터가 없어요.','bad');}
-  else if(a==='shview'){if(SHARED)applyShared(SHARED,true);if(SHARED)shSet({seenAt:SHARED.savedAt});shBanner('');}
-  else if(a==='shkeep'){if(SHARED)shSet({seenAt:SHARED.savedAt});shBanner('');}
+  else if(a==='shload'){if(SHARED&&applyShared(SHARED,{backup:true})){shMsg('공유 데이터를 불러왔어요. 이전 입력은 백업해 뒀어요.','ok');shBanner(`공유된 데이터로 바꿨어요. ${UNDO_BTN}`);}else shMsg('불러올 공유 데이터가 없어요.','bad');}
+  else if(a==='shview'){if(SHARED&&applyShared(SHARED,{backup:true}))shBanner(`공유된 데이터로 바꿨어요. ${UNDO_BTN} <button type="button" class="lnk" data-act="shdismiss">확인했어요</button>`);}
+  else if(a==='shkeep'){if(SHARED){shSet({seenAt:SHARED.savedAt});shPill();}shBanner('');}
+  else if(a==='shundo'){if(restoreBackup())shBanner('이전 입력으로 되돌렸어요.');else shBanner('되돌릴 백업이 없어요.');}
   else if(a==='shdismiss'){shBanner('');}
   else if(a==='resetw'){const D=defaultFor(S.key);S.tasks.forEach((t,i)=>t.w=D.tasks[i].w);S.csi.forEach((c,i)=>c.w=D.csi[i].w);init();}
   else if(a==='resetc'){
@@ -2354,6 +2370,7 @@ document.addEventListener('input',e=>{
 },true);
 
 const CHANGELOG=[
+  ['v1.5','2026-10-14',['공유 데이터가 기본으로 보여요: 예전에 접속한 적 있는 사람도 자동으로 공유 데이터로 바뀌고, 이전 입력은 백업해서 "되돌리기"가 가능해요 (값을 직접 고친 사람에게는 먼저 물어봐요)','공유 데이터를 열면 저장한 사람이 보던 분기로 이동해요','제목 옆에 "공유 데이터"/"내 입력" 상태 표시','잘못 읽힌 기준값(순서가 맞지 않는 값)은 열 때 기본값으로 바로잡아요']],
   ['v1.4','2026-10-14',['공유 저장: 저장해 두면 같은 주소로 들어온 다른 사람도 같은 데이터를 봐요 (토큰으로 바로 저장하거나 파일을 내려받아 올리기)','상위 등급 가이드: 오류건 → CSI → 처리량 순서로 묶어서 보여주고, 2건당 1점이라 홀수 건이 점수에 안 잡힌다는 안내와 두 오류건을 함께 줄이는 조합을 추가','결과 PDF의 업무코드별 점수 표에서 인센티브·패널티 열을 뺐어요']],
   ['v1.3','2026-10-14',['상위 등급 달성 가이드: 다음 등급까지 필요한 점수와, 항목 하나씩 얼마나 올리면(오류건은 줄이면) 달성하는지 계산해서 보여줘요. PDF에도 가까운 3가지가 들어가요']],
   ['v1.2','2026-10-14',['검색 3개 업무(검결없·메뉴검색·메타키워드)를 한 줄에 나란히 배치','글자 크기를 전체적으로 키워서 읽기 쉽게 했어요','이미지·표 불러오기 영역을 화면에서 뺐어요 (이미지를 읽지 않는 화면에서는 보이지 않아요)']],
@@ -2441,17 +2458,51 @@ async function fetchShared(){
     return(j&&j.app==='sla-sim'&&j.data)?j:null;
   }catch(e){return null;}
 }
-function applyShared(j,keepCur){
+let SYNCING=false;
+const SH_BACKUP='sla-sim-backup';
+function markDirty(){   // 이 브라우저에서 값을 직접 고쳤다는 표시 (공유 데이터를 자동으로 바꿔도 되는지 가리는 데 쓴다)
+  if(SYNCING||!SHARE_OK)return;
+  if(!shMeta().dirty){shSet({dirty:true});shPill();}
+}
+function shPill(){
+  const el=$('sharepill');if(!el)return;
+  if(!SHARE_OK||!SHARED){el.classList.add('hidden');return;}
+  const m=shMeta();let t,tip;
+  if(m.seenAt===SHARED.savedAt&&!m.dirty){t='공유 데이터';tip=`공유된 데이터를 보고 있어요 (저장 ${shWhen(SHARED.savedAt)})`;}
+  else if(m.seenAt===SHARED.savedAt){t='공유 데이터 + 내 수정';tip='공유된 데이터에서 이 브라우저의 값을 고쳤어요. 다른 사람에게는 보이지 않아요';}
+  else{t='내 입력';tip='이 브라우저의 입력을 보고 있어요. 공유된 데이터와 달라요';}
+  el.textContent=t;el.title=tip;el.classList.remove('hidden');
+}
+function loadStates(src){
   const nd={};
-  Object.keys(j.data||{}).forEach(k=>{if(/^\d{4}-[1-4]$/.test(k)&&okState(j.data[k]))nd[k]=normState(j.data[k]);});
+  Object.keys((src&&src.data)||{}).forEach(k=>{if(/^\d{4}-[1-4]$/.test(k)&&okState(src.data[k]))nd[k]=normState(src.data[k]);});
+  return nd;
+}
+function swapIn(nd,cur){
   const ks=Object.keys(nd).sort();
-  if(!ks.length)return false;
+  SYNCING=true;
   Object.keys(DATA).forEach(k=>delete DATA[k]);
   Object.assign(DATA,nd);
-  CUR=(keepCur&&DATA[CUR])?CUR:((typeof j.cur==='string'&&DATA[j.cur])?j.cur:ks[ks.length-1]);
-  useScheme(CUR);
-  S=DATA[CUR];S.key=CUR;
+  CUR=(typeof cur==='string'&&DATA[cur])?cur:ks[ks.length-1];   // 저장한 사람이 보던 분기로 간다
+  useScheme(CUR);S=DATA[CUR];S.key=CUR;
   setBaseline();openMth.clear();init();syncQsel();save();
+  SYNCING=false;
+}
+// 공유 데이터로 바꾼다. backup이면 지금 이 브라우저의 입력을 따로 저장해 둔다(되돌리기용)
+function applyShared(j,opts){
+  const nd=loadStates(j);
+  if(!Object.keys(nd).length)return false;
+  if(opts&&opts.backup){try{DATA[CUR]=S;localStorage.setItem(SH_BACKUP,JSON.stringify({cur:CUR,data:DATA}));}catch(e){}}
+  swapIn(nd,j.cur);
+  shSet({seenAt:j.savedAt,dirty:false});shPill();
+  return true;
+}
+function restoreBackup(){
+  let p=null;try{p=JSON.parse(localStorage.getItem(SH_BACKUP)||'null');}catch(e){}
+  const nd=loadStates(p);
+  if(!Object.keys(nd).length)return false;
+  swapIn(nd,p.cur);
+  shSet({dirty:true,seenAt:SHARED?SHARED.savedAt:shMeta().seenAt});shPill();
   return true;
 }
 function shBanner(html){const b=$('share-banner');if(b)b.innerHTML=html?`<div class="qn">${html}</div>`:'';}
@@ -2459,21 +2510,24 @@ function shStat(){
   const el=$('sh-stat');if(!el)return;
   el.innerHTML=SHARED?`공유된 데이터가 있어요 · 저장 시각 <b>${esc(shWhen(SHARED.savedAt))}</b> · 저장한 버전 ${esc(SHARED.appVer||'')}`:'아직 공유된 데이터가 없어요 (또는 읽어오지 못했어요).';
 }
+const UNDO_BTN='<button type="button" class="lnk" data-act="shundo">이전 입력으로 되돌리기</button>';
 async function initShared(){
   if(!SHARE_OK)return;
   const sb=$('sharebtn');if(sb)sb.classList.remove('hidden');
   const j=await fetchShared();
-  SHARED=j;shStat();
+  SHARED=j;shStat();shPill();
   if(!j)return;
-  const meta=shMeta();
-  if(!HAD_LOCAL){
-    if(applyShared(j,false)){
-      shSet({seenAt:j.savedAt});
-      shBanner(`공유된 데이터를 보고 있어요 (저장 ${esc(shWhen(j.savedAt))}). 값을 고쳐도 다른 사람에게는 영향이 없어요. <button type="button" class="lnk" data-act="shdismiss">확인했어요</button>`);
-    }
-  }else if(meta.seenAt!==j.savedAt){
-    shBanner(`공유된 데이터가 있어요 (저장 ${esc(shWhen(j.savedAt))}). 보면 이 브라우저의 입력은 공유 데이터로 바뀌어요. <button type="button" class="lnk" data-act="shview">공유 데이터 보기</button> <button type="button" class="lnk" data-act="shkeep">내 입력 유지</button>`);
+  const meta=shMeta(),when=esc(shWhen(j.savedAt));
+  if(meta.seenAt===j.savedAt)return;                 // 이미 이 저장본을 본 사람
+  if(!HAD_LOCAL){                                      // 처음 오는 사람: 공유 데이터가 곧 기본 화면
+    if(applyShared(j,{}))shBanner(`공유된 데이터를 보고 있어요 (저장 ${when}). 값을 고쳐도 다른 사람에게는 영향이 없어요. <button type="button" class="lnk" data-act="shdismiss">확인했어요</button>`);
+    return;
   }
+  if(!meta.seenAt||!meta.dirty){                       // 공유 데이터를 본 적 없거나, 본 뒤로 값을 고치지 않은 사람: 자동으로 바꾸고 이전 입력은 백업
+    if(applyShared(j,{backup:true}))shBanner(`공유된 데이터를 보고 있어요 (저장 ${when}). 이 브라우저에 있던 입력은 백업해 뒀어요. ${UNDO_BTN} <button type="button" class="lnk" data-act="shdismiss">확인했어요</button>`);
+    return;
+  }
+  shBanner(`공유된 데이터가 새로 저장됐어요 (저장 ${when}). 내 입력은 백업해 두고 공유 데이터로 바꿔서 볼 수 있어요. <button type="button" class="lnk" data-act="shview">공유 데이터 보기</button> <button type="button" class="lnk" data-act="shkeep">내 입력 유지</button>`);
 }
 function buildShare(){
   const p=$('share-panel');if(!p)return;
@@ -2525,12 +2579,12 @@ async function shareSave(){
     let r=await put();
     if(r.status===409||r.status===422)r=await put();   // 그 사이 파일이 바뀐 경우 한 번 더
     if(!r.ok){
-      const why={401:'토큰이 올바르지 않거나 만료됐어요.',403:'권한이 없어요. 토큰에 이 저장소의 Contents: Read and write 권한이 있는지 확인해주세요.',404:'저장소를 찾을 수 없어요. 저장소 주인·이름과, 토큰을 만들 때 이 저장소를 골랐는지 확인해주세요.'}[r.status]||`저장하지 못했어요 (오류 ${r.status}).`;
+      const why={401:'토큰이 올바르지 않거나 만료됐어요. 토큰을 처음부터 끝까지(공백 없이) 다시 복사해 붙여넣어 보세요. 계속 안 되면 "파일로 내려받기"로 올려도 같아요.',403:'권한이 없어요. 토큰에 이 저장소의 Contents: Read and write 권한이 있는지 확인해주세요.',404:'저장소를 찾을 수 없어요. 저장소 주인·이름과, 토큰을 만들 때 이 저장소를 골랐는지 확인해주세요.'}[r.status]||`저장하지 못했어요 (오류 ${r.status}).`;
       shMsg(esc(why),'bad');return;
     }
     try{localStorage.setItem(SH_TOKEN,token);}catch(e){}
-    shSet({owner,repo,seenAt:payload.savedAt});
-    SHARED=payload;shStat();
+    shSet({owner,repo,seenAt:payload.savedAt,dirty:false});
+    SHARED=payload;shStat();shPill();
     shMsg(`저장했어요 (${esc(shWhen(payload.savedAt))}). 1~2분 뒤부터 다른 사람이 이 주소로 들어오면 같은 데이터를 봐요.`,'ok');
   }catch(e){shMsg('저장소에 연결하지 못했어요. 인터넷 연결을 확인해주세요.','bad');}
 }
