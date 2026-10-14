@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>장소데이터팀 SLA 성과 시뮬레이터 v1.5</title>
+<title>장소데이터팀 SLA 성과 시뮬레이터 v1.6</title>
 <style>
 :root{
   box-sizing:border-box;
@@ -193,6 +193,13 @@ table.ex{margin:8px 0 4px;min-width:420px}
 .ver{margin-left:8px;font-size:14px;font-weight:700;color:var(--mut);background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:1px 9px;cursor:pointer;vertical-align:middle}
 .ver:hover{color:var(--blue);border-color:var(--blue)}
 .ver.sp{color:var(--blue);border-color:var(--blue);background:var(--blue-panel)}
+.resbox-wrap{flex:0 0 auto;display:flex;flex-direction:column;gap:8px;max-width:100%}
+.csiact{display:flex;align-items:center;justify-content:flex-end;gap:8px;font-size:13.5px;font-weight:600;color:var(--ink);cursor:pointer;padding:2px 4px}
+.csiact input{width:18px;height:18px;accent-color:var(--blue);cursor:pointer}
+.csinote{font-size:13px;color:var(--mut);line-height:1.45;text-align:right;max-width:340px;margin-left:auto}
+.csinote.ok{color:var(--pos);font-weight:600}
+.csinote.warn{color:var(--amber);font-weight:600}
+.resbox.actual{border-color:var(--pos);box-shadow:0 0 0 1px var(--pos) inset}
 .m1{display:grid;grid-template-columns:minmax(0,1fr)}
 .g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 @media (max-width:900px){.g3{grid-template-columns:minmax(0,1fr)}}
@@ -270,28 +277,30 @@ table.gd tr.gh td{background:var(--soft);text-align:left;white-space:normal;font
         <div class="titlerow">
           <span class="qpick"><select id="ysel" aria-label="연도"><option>2025</option><option>2026</option><option>2027</option><option>2028</option></select>년
             <select id="qsel" aria-label="분기"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select>분기</span>
-          <h1>장소데이터팀 SLA 성과 시뮬레이터</h1><button type="button" class="ver" id="verbtn" data-act="togver">v1.5</button><button type="button" class="ver sp hidden" id="sharepill" data-act="togs"></button>
+          <h1>장소데이터팀 SLA 성과 시뮬레이터</h1><button type="button" class="ver" id="verbtn" data-act="togver">v1.6</button><button type="button" class="ver sp hidden" id="sharepill" data-act="togs"></button>
         </div>
         <p class="note" id="note"></p>
         <div id="qnote"></div>
         <div id="share-banner"></div>
       </div>
-      <div class="resbox" aria-live="polite">
+      <div class="resbox-wrap"><div class="resbox" id="resbox" aria-live="polite">
         <div style="text-align:right">
-          <span class="lab">예상 팀 점수</span>
+          <span class="lab" id="lab-score">예상 팀 점수</span>
           <div class="score"><span class="n" id="final-score">--</span><span class="u">점</span></div>
         </div>
         <div class="sep"></div>
         <div>
-          <span class="lab">예상 등급</span>
+          <span class="lab" id="lab-grade">예상 등급</span>
           <span class="gr" id="final-grade">--</span>
           <span class="incl" id="final-inc"></span>
         </div>
       </div>
+      <label class="csiact" title="CSI 업무만족도 평가는 나중에 나와요. 실제 점수를 넣었으면 체크하세요"><input type="checkbox" id="csi-actual"> CSI 실제 점수 반영됨</label>
+      <div class="csinote" id="csi-note"></div></div>
     </div>
     <div class="tiles">
       <div class="tile"><span class="k">정량평가 환산점수</span><span class="v" id="score-quant">0.00점</span></div>
-      <div class="tile"><span class="k">정성평가(CSI) 환산점수</span><span class="v" id="score-qual">0.00점</span></div>
+      <div class="tile"><span class="k" id="k-qual">정성평가(CSI) 환산점수</span><span class="v" id="score-qual">0.00점</span></div>
       <div class="tile"><span class="k">오류차감 직격 점수</span><span class="v neg" id="score-deduct">0.00점</span></div>
       <div class="tile"><span class="k">팀 합산 적용 비중</span><span class="v" id="total-weight">–</span></div>
     </div>
@@ -471,13 +480,21 @@ function applyKnownTargets(S){
   S.known3=true;S.known3v=2;
   return true;
 }
-const PRESETS={'2026-1':makeQ1,'2026-2':makeDef};
+// 공식 결과가 나온 분기(1·2분기)는 CSI 실제 점수가 반영된 상태(csiActual)
+const PRESETS={'2026-1':()=>{const D=makeQ1();D.csiActual=true;return D;},'2026-2':()=>{const D=makeDef();D.csiActual=true;return D;}};
 const presetKeys=()=>Object.keys(PRESETS).sort();
 function blankValues(D){
   D.tasks.forEach(t=>t.crit.forEach(c=>{c.m=['','',''];c.ov='';c.x=[false,false,false];}));
   D.csi.forEach(b=>b.vals=['','','','','']);
   D.errs.forEach(e=>e.m=['','','']);
+  D.csiActual=false;   // 값을 비우면 CSI 실제 점수도 아직 없는 상태
   return D;
+}
+// 예상/실제 구분: CSI 업무만족도 평가는 나중에 나오므로, 실제 점수가 반영됐다고 표시하고 CSI 3개 업무코드가 모두 있을 때만 "실제"로 본다
+function scoreStatus(S){
+  const filledAny=S.csi.some(b=>filled(b.vals).length>0);
+  const filledAll=S.csi.every(b=>filled(b.vals).length>0);
+  return{filledAny,filledAll,actual:!!S.csiActual&&filledAll};
 }
 function defaultFor(key){
   if(PRESETS[key])return PRESETS[key]();
@@ -821,7 +838,7 @@ function importRaw0(S,rows){
       const gi=csiGroupByCode(r['업무코드']),ii=CSI_ITEMS.indexOf(crit);
       if(gi===undefined||ii<0)return;
       const v=Number(r['성과(평가기준)']);
-      if(!isNaN(v)&&String(r['성과(평가기준)']).trim()!=='')S.csi[gi].vals[ii]=v;
+      if(!isNaN(v)&&String(r['성과(평가기준)']).trim()!==''){S.csi[gi].vals[ii]=v;S.csiActual=true;}   // 공식 결과 파일의 CSI 점수는 실제 점수
       const w=kTW?Number(r[kTW]):NaN;
       if(!isNaN(w)&&w>0)S.csi[gi].w=w;
       if(ii===0)rep.ok.push('CSI '+S.csi[gi].label);
@@ -1374,7 +1391,7 @@ function parseAdjustText(text){
 }
 //</extract>
 
-const APP_VERSION='v1.5',APP_DATE='2026-10-14';
+const APP_VERSION='v1.6',APP_DATE='2026-10-14';
 
 /* ---------- 상태: 분기별로 따로 저장 ---------- */
 const STORE='sla-sim-jangso-v4';
@@ -1385,6 +1402,7 @@ function normState(st){
   const D0=makeDef();
   while(st.tasks.length<D0.tasks.length)st.tasks.push(JSON.parse(JSON.stringify(D0.tasks[st.tasks.length])));   // 맵데이터연결(2025년 1·2분기 업무) 추가분
   st.tasks.forEach(t=>t.crit.forEach(c=>{if(!Array.isArray(c.x))c.x=[false,false,false];}));
+  if(typeof st.csiActual!=='boolean')st.csiActual=!!st.fileScore||!!PRESETS[st.key];   // 공식 결과로 채워진 분기는 실제 점수, 나머지는 예상
   {  // 기준값 순서가 맞지 않으면(예전에 잘못 읽힌 값 등) 기본값으로 되돌린다
     const D1=makeDef();
     st.tasks.forEach((t,ti)=>t.crit.forEach((c,ci)=>{
@@ -1657,6 +1675,20 @@ function update(){
   }
   $('score-quant').textContent=has?f2(R.quant)+'점':'--';
   $('score-qual').textContent=has?f2(R.qual)+'점':'--';
+  {  // 예상 / 실제 구분
+    const st=scoreStatus(S),cb=$('csi-actual'),ls=$('lab-score'),lg=$('lab-grade'),kq=$('k-qual'),nt=$('csi-note'),rb=$('resbox');
+    if(cb)cb.checked=!!S.csiActual;
+    if(ls)ls.textContent=st.actual?'팀 점수 (실제)':'예상 팀 점수';
+    if(lg)lg.textContent=st.actual?'등급 (실제)':'예상 등급';
+    if(kq)kq.textContent=st.actual?'정성평가(CSI) 환산점수':'정성평가(CSI) 환산점수 · 예상';
+    if(rb)rb.classList.toggle('actual',st.actual);
+    if(nt){
+      if(st.actual){nt.className='csinote ok';nt.textContent='✓ CSI 업무만족도 실제 점수가 반영된 점수예요';}
+      else if(S.csiActual&&!st.filledAll){nt.className='csinote warn';nt.textContent='실제 점수로 보려면 CSI 점수(3개 업무코드)를 모두 입력해주세요';}
+      else if(!st.filledAny){nt.className='csinote';nt.textContent='CSI 업무만족도 평가가 나오기 전이라 예상 점수예요 (CSI 제외)';}
+      else{nt.className='csinote';nt.textContent='CSI는 예상 값을 넣은 점수예요. 실제 점수가 나오면 체크해주세요';}
+    }
+  }
   $('score-deduct').textContent=has?R.ded.toFixed(4)+'점':'--';
   $('total-weight').textContent=(R.W*100).toFixed(2)+'%';
 
@@ -1862,6 +1894,7 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('change',e=>{
   const el=e.target,d=el.dataset||{};
+  if(el.id==='csi-actual'){S.csiActual=el.checked;markDirty();update();return;}
   if(d.ton!==undefined||d.mx||d.mton)markDirty();
   if(d.ton!==undefined){S.tasks[+d.ton].on=el.checked;init();}
   else if(d.mx){const [id,k]=d.mx.split(':');const c=critById(id);if(!c.x)c.x=[false,false,false];c.x[+k]=!el.checked;init();}
@@ -1919,6 +1952,7 @@ document.addEventListener('click',e=>{
   else if(a==='guide'){GUIDE_OPEN=!GUIDE_OPEN;update();renderGuide();}
   else if(a==='togs'){$('share-panel').classList.toggle('hidden');}
   else if(a==='shsave'){shareSave();}
+  else if(a==='shcheck'){shareCheck();}
   else if(a==='shfile'){shareFile();}
   else if(a==='shforget'){try{localStorage.removeItem(SH_TOKEN);}catch(e){}$('gh-token').value='';shMsg('저장된 토큰을 지웠어요.','ok');}
   else if(a==='shload'){if(SHARED&&applyShared(SHARED,{backup:true})){shMsg('공유 데이터를 불러왔어요. 이전 입력은 백업해 뒀어요.','ok');shBanner(`공유된 데이터로 바꿨어요. ${UNDO_BTN}`);}else shMsg('불러올 공유 데이터가 없어요.','bad');}
@@ -2250,14 +2284,14 @@ function pdfReportHTML(){
   const now=new Date(),p2=n=>String(n).padStart(2,'0');
   const when=`${now.getFullYear()}-${p2(now.getMonth()+1)}-${p2(now.getDate())} ${p2(now.getHours())}:${p2(now.getMinutes())}`;
   let h=`<div class="rp-head"><div><h1>장소데이터팀 SLA 성과 시뮬레이션 결과</h1><div class="rp-sub">${esc(qLabel(S.key))} · 입력 월 ${ml.join(' · ')} · 출력 ${when} · SLA 시뮬레이터 ${APP_VERSION}</div></div></div>`;
-  h+=`<div class="rp-note">이 문서는 시뮬레이션 결과이며 공식 SLA 평가 결과와 다를 수 있어요.</div>`;
+  h+=`<div class="rp-note">이 문서는 시뮬레이션 결과이며 공식 SLA 평가 결과와 다를 수 있어요. ${scoreStatus(S).actual?'<b>CSI 업무만족도 실제 점수가 반영된 점수예요.</b>':'<b>CSI 업무만족도 실제 점수가 반영되기 전의 예상 점수예요.</b>'}</div>`;
   // 1) 요약
   if(!has){
     h+='<div class="rp-warn">입력된 값이 없어서 점수를 계산하지 못했어요.</div>';
   }else{
     const gi=R.grade,sc=R.team,dedPts=R.W?R.ded/R.W:0;
-    h+=`<div class="rp-sum"><div class="rp-big"><div class="rp-lab">예상 팀 점수</div><div class="rp-num">${f2(sc)}<span>점</span></div></div>
-      <div class="rp-big"><div class="rp-lab">예상 등급</div><div class="rp-grade" style="color:${GCP[gi]}">${GR[gi]}</div><div class="rp-inc">${esc(incTxt(gi))}</div></div>
+    h+=`<div class="rp-sum"><div class="rp-big"><div class="rp-lab">${scoreStatus(S).actual?'팀 점수 (실제)':'예상 팀 점수'}</div><div class="rp-num">${f2(sc)}<span>점</span></div></div>
+      <div class="rp-big"><div class="rp-lab">${scoreStatus(S).actual?'등급 (실제)':'예상 등급'}</div><div class="rp-grade" style="color:${GCP[gi]}">${GR[gi]}</div><div class="rp-inc">${esc(incTxt(gi))}</div></div>
       <table class="rp-t rp-mini"><tr><th>정량평가 환산점수</th><td>${f2(R.quant)}점</td></tr><tr><th>정성평가(CSI) 환산점수</th><td>${f2(R.qual)}점</td></tr><tr><th>오류차감 전 점수</th><td>${f2(R.pre)}점</td></tr><tr><th>오류차감</th><td>${sgn(dedPts)}점 (가중 ${R.ded.toFixed(4)})</td></tr><tr><th>팀 합산 적용 비중</th><td>${(R.W*100).toFixed(2)}%</td></tr></table></div>`;
     const lines=[];
     if(S.fileScore){const d0=sc-S.fileScore.team;lines.push(`불러온 파일의 공식 점수 ${f2(S.fileScore.team)}점 대비 ${Math.abs(d0)<0.005?'차이 없음':sgn(d0)+'점'}`);}
@@ -2370,6 +2404,7 @@ document.addEventListener('input',e=>{
 },true);
 
 const CHANGELOG=[
+  ['v1.6','2026-10-14',['"예상 팀 점수" 옆에 CSI 실제 점수 반영 체크: 실제 점수가 나오기 전에는 예상 점수로, 체크하고 CSI 점수를 넣으면 실제 점수로 표시해요 (PDF에도 구분해서 표시)','공유 패널: "연결 확인" 버튼, GitHub 오류 원인 표시, 토큰 입력 보정(공백·따옴표 자동 제거)','수정은 이 브라우저에 자동 저장되고, 다른 사람에게 보이려면 공유 저장이 필요하다는 안내 추가']],
   ['v1.5','2026-10-14',['공유 데이터가 기본으로 보여요: 예전에 접속한 적 있는 사람도 자동으로 공유 데이터로 바뀌고, 이전 입력은 백업해서 "되돌리기"가 가능해요 (값을 직접 고친 사람에게는 먼저 물어봐요)','공유 데이터를 열면 저장한 사람이 보던 분기로 이동해요','제목 옆에 "공유 데이터"/"내 입력" 상태 표시','잘못 읽힌 기준값(순서가 맞지 않는 값)은 열 때 기본값으로 바로잡아요']],
   ['v1.4','2026-10-14',['공유 저장: 저장해 두면 같은 주소로 들어온 다른 사람도 같은 데이터를 봐요 (토큰으로 바로 저장하거나 파일을 내려받아 올리기)','상위 등급 가이드: 오류건 → CSI → 처리량 순서로 묶어서 보여주고, 2건당 1점이라 홀수 건이 점수에 안 잡힌다는 안내와 두 오류건을 함께 줄이는 조합을 추가','결과 PDF의 업무코드별 점수 표에서 인센티브·패널티 열을 뺐어요']],
   ['v1.3','2026-10-14',['상위 등급 달성 가이드: 다음 등급까지 필요한 점수와, 항목 하나씩 얼마나 올리면(오류건은 줄이면) 달성하는지 계산해서 보여줘요. PDF에도 가까운 3가지가 들어가요']],
@@ -2469,8 +2504,9 @@ function shPill(){
   if(!SHARE_OK||!SHARED){el.classList.add('hidden');return;}
   const m=shMeta();let t,tip;
   if(m.seenAt===SHARED.savedAt&&!m.dirty){t='공유 데이터';tip=`공유된 데이터를 보고 있어요 (저장 ${shWhen(SHARED.savedAt)})`;}
-  else if(m.seenAt===SHARED.savedAt){t='공유 데이터 + 내 수정';tip='공유된 데이터에서 이 브라우저의 값을 고쳤어요. 다른 사람에게는 보이지 않아요';}
+  else if(m.seenAt===SHARED.savedAt){t='공유 데이터 + 내 수정';tip='이 브라우저에서 고친 값이 있어요. 다른 사람에게 보이려면 "공유 저장"을 눌러야 해요';}
   else{t='내 입력';tip='이 브라우저의 입력을 보고 있어요. 공유된 데이터와 달라요';}
+  if(m.seenAt===SHARED.savedAt&&m.dirty)t='수정함 · 공유 전';
   el.textContent=t;el.title=tip;el.classList.remove('hidden');
 }
 function loadStates(src){
@@ -2533,16 +2569,16 @@ function buildShare(){
   const p=$('share-panel');if(!p)return;
   const g=ghGuess(),m=shMeta();
   p.innerHTML=`<div class="ph"><h3>공유 저장 — 다른 사람도 같은 데이터를 보게 하기</h3></div>
-  <p class="pnote" style="margin:0 0 8px">저장하면 이 주소로 들어오는 사람은 처음에 <b>저장한 데이터</b>를 보게 돼요. 각자 고친 값은 자기 브라우저에만 저장돼서 서로에게 영향을 주지 않아요. <b>저장한 내용은 이 주소를 아는 누구나 볼 수 있어요</b> (GitHub Pages는 공개 사이트예요).</p>
+  <p class="pnote" style="margin:0 0 8px"><b>수정한 값은 이 브라우저에 자동으로 저장돼요</b> (저장 버튼이 따로 없어요). 다만 <b>다른 사람에게 보이려면 아래 "지금 저장해서 공유하기"</b>(또는 파일 올리기)를 눌러야 해요. 공유하면 이 주소로 들어오는 사람은 처음에 <b>저장한 데이터</b>를 보게 돼요. 각자 고친 값은 자기 브라우저에만 저장돼서 서로에게 영향을 주지 않아요. <b>저장한 내용은 이 주소를 아는 누구나 볼 수 있어요</b> (GitHub Pages는 공개 사이트예요).</p>
   <div id="sh-stat" class="exn" style="margin:0 0 8px"></div>
   <div class="mxrow"><button type="button" class="tbtn" data-act="shload">공유 데이터 불러오기 (내 입력은 바뀌어요)</button></div>
   <div class="sub3" style="margin-top:14px">저장하기 (관리하는 사람만)</div>
   <div class="shform">
     <label>저장소 주인<input class="winp" id="gh-owner" value="${esc(m.owner||g.owner)}" placeholder="예: dragonk9977"></label>
     <label>저장소 이름<input class="winp" id="gh-repo" value="${esc(m.repo||g.repo)}" placeholder="예: poi_sla_simul"></label>
-    <label>토큰 <span class="sg">(이 브라우저에만 저장)</span><input class="winp" id="gh-token" type="password" value="${localStorage.getItem(SH_TOKEN)?'••••••••':''}" placeholder="github_pat_…" autocomplete="off"></label>
+    <label>토큰 <span class="sg">(이 브라우저에만 저장)</span><input class="winp" id="gh-token" type="password" value="${localStorage.getItem(SH_TOKEN)?'••••••••':''}" placeholder="github_pat_…" autocomplete="new-password" spellcheck="false"></label>
   </div>
-  <div class="mxrow"><button type="button" class="tbtn" data-act="shsave">💾 지금 저장해서 공유하기</button><button type="button" class="tbtn" data-act="shfile">파일로 내려받기</button><button type="button" class="ulink" data-act="shforget">저장된 토큰 지우기</button></div>
+  <div class="mxrow"><button type="button" class="tbtn" data-act="shcheck">🔍 연결 확인</button><button type="button" class="tbtn" data-act="shsave">💾 지금 저장해서 공유하기</button><button type="button" class="tbtn" data-act="shfile">파일로 내려받기</button><button type="button" class="ulink" data-act="shforget">저장된 토큰 지우기</button></div>
   <div id="share-msg" class="impmsg"></div>
   <p class="pnote" style="margin:6px 0 0">토큰 만들기: GitHub 오른쪽 위 프로필 → Settings → Developer settings → Personal access tokens → <b>Fine-grained tokens</b> → Generate new token → <b>이 저장소만</b> 선택 → Repository permissions의 <b>Contents를 Read and write</b>로 → 만든 토큰을 위 칸에 붙여넣기. 저장하면 1~2분 뒤 다른 사람 화면에 반영돼요. 토큰 없이 쓰려면 "파일로 내려받기"로 받은 <b>sla-shared.json</b>을 저장소에 올려도 같아요.</p>`;
   shStat();
@@ -2555,14 +2591,47 @@ function shareFile(){
   document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
   shMsg(`<b>${SHARE_FILE}</b>을 내려받았어요. 저장소의 index.html과 같은 위치에 올리면(Add file → Upload files) 다른 사람도 같은 데이터를 봐요.`,'ok');
 }
-async function shareSave(){
+function shForm(){
   const owner=$('gh-owner').value.trim(),repo=$('gh-repo').value.trim();
-  let token=$('gh-token').value.trim();
-  if(/^•+$/.test(token))token=localStorage.getItem(SH_TOKEN)||'';
-  if(!owner||!repo||!token){shMsg('저장소 주인, 저장소 이름, 토큰을 모두 입력해주세요.','bad');return;}
-  const api=(localStorage.getItem('sla-gh-api')||'https://api.github.com').replace(/\/$/,'');
-  const url=`${api}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${SHARE_FILE}`;
-  const H={Authorization:'Bearer '+token,Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};
+  let token=$('gh-token').value;
+  if(/^•+$/.test(token.trim()))token=localStorage.getItem(SH_TOKEN)||'';
+  token=token.replace(/[\s\u200B-\u200D\uFEFF"']/g,'');   // 복사하면서 섞인 공백·줄바꿈·따옴표는 지운다
+  return{owner,repo,token};
+}
+function shApi(){return(localStorage.getItem('sla-gh-api')||'https://api.github.com').replace(/\/$/,'');}
+function shHeaders(token){return{Authorization:'Bearer '+token,Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};}
+async function ghMsg(r){try{return(await r.clone().json()).message||'';}catch(e){return '';}}
+function shTokenProblem(token){
+  if(!token)return '토큰을 입력해주세요.';
+  if(/[^\x21-\x7E]/.test(token))return '토큰에 한글이나 • 같은 문자가 섞여 있어요. 칸을 비우고 GitHub에서 복사한 토큰만 다시 붙여넣어 주세요.';
+  return '';
+}
+const TOKEN_HINT='토큰은 보통 <b>github_pat_</b>(또는 ghp_)로 시작해요. GitHub에서 토큰을 만든 직후 한 번만 보이니, 처음부터 끝까지 복사했는지 확인해주세요.';
+async function shareCheck(){
+  const{owner,repo,token}=shForm();
+  if(!owner||!repo){shMsg('저장소 주인과 저장소 이름을 입력해주세요.','bad');return;}
+  const prob=shTokenProblem(token);if(prob){shMsg(esc(prob),'bad');return;}
+  const api=shApi(),H=shHeaders(token),lines=[];
+  shMsg('연결을 확인하는 중이에요…','');
+  try{
+    if(!/^(github_pat_|ghp_|gho_|ghu_|ghs_)/.test(token))lines.push(`⚠ ${TOKEN_HINT}`);
+    const u1=await fetch(`${api}/user`,{headers:H,cache:'no-store'});
+    if(u1.status===401){shMsg(`${lines.join('<br>')}${lines.length?'<br>':''}✗ <b>토큰이 GitHub에서 받아들여지지 않았어요.</b> 잘못 복사했거나 만료·삭제된 토큰이에요. 새로 만들어서 다시 붙여넣어 주세요.<br><span class="sg">GitHub 응답: ${esc(await ghMsg(u1))}</span>`,'bad');return;}
+    if(u1.ok)lines.push(`✓ 토큰이 유효해요 (계정: ${esc((await u1.json()).login||'')})`);
+    else lines.push(`⚠ 계정 확인이 안 됐어요 (오류 ${u1.status}). 계속 확인해볼게요.`);
+    const u2=await fetch(`${api}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,{headers:H,cache:'no-store'});
+    if(u2.status===404){shMsg(`${lines.join('<br>')}<br>✗ <b>이 토큰으로는 저장소 ${esc(owner)}/${esc(repo)}를 볼 수 없어요.</b> 저장소 주인·이름이 맞는지, 토큰을 만들 때 <b>Only select repositories</b>에서 이 저장소를 골랐는지 확인해주세요.`,'bad');return;}
+    if(!u2.ok){shMsg(`${lines.join('<br>')}<br>✗ 저장소를 확인하지 못했어요 (오류 ${u2.status}). <span class="sg">GitHub 응답: ${esc(await ghMsg(u2))}</span>`,'bad');return;}
+    lines.push(`✓ 저장소 ${esc(owner)}/${esc(repo)}에 접근할 수 있어요`);
+    lines.push('저장 권한(Contents: Read and write)은 실제로 저장할 때 확인돼요. "지금 저장해서 공유하기"를 눌러보세요.');
+    shMsg(lines.join('<br>'),'ok');
+  }catch(e){shMsg('GitHub에 연결하지 못했어요. 인터넷 연결(또는 회사 방화벽)을 확인해주세요.','bad');}
+}
+async function shareSave(){
+  const{owner,repo,token}=shForm();
+  if(!owner||!repo){shMsg('저장소 주인과 저장소 이름을 입력해주세요.','bad');return;}
+  const prob=shTokenProblem(token);if(prob){shMsg(esc(prob),'bad');return;}
+  const api=shApi(),url=`${api}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${SHARE_FILE}`,H=shHeaders(token);
   const payload=sharePayload();
   const content=btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
   shMsg('저장하는 중이에요…','');
@@ -2579,8 +2648,9 @@ async function shareSave(){
     let r=await put();
     if(r.status===409||r.status===422)r=await put();   // 그 사이 파일이 바뀐 경우 한 번 더
     if(!r.ok){
-      const why={401:'토큰이 올바르지 않거나 만료됐어요. 토큰을 처음부터 끝까지(공백 없이) 다시 복사해 붙여넣어 보세요. 계속 안 되면 "파일로 내려받기"로 올려도 같아요.',403:'권한이 없어요. 토큰에 이 저장소의 Contents: Read and write 권한이 있는지 확인해주세요.',404:'저장소를 찾을 수 없어요. 저장소 주인·이름과, 토큰을 만들 때 이 저장소를 골랐는지 확인해주세요.'}[r.status]||`저장하지 못했어요 (오류 ${r.status}).`;
-      shMsg(esc(why),'bad');return;
+      const why={401:'토큰이 GitHub에서 받아들여지지 않았어요. 잘못 복사했거나 만료·삭제된 토큰이에요.',403:'권한이 없어요. 토큰에 이 저장소의 Contents: Read and write 권한이 있는지 확인해주세요.',404:'저장소를 찾을 수 없어요. 저장소 주인·이름과, 토큰을 만들 때 이 저장소를 골랐는지 확인해주세요.'}[r.status]||`저장하지 못했어요 (오류 ${r.status}).`;
+      const gm=await ghMsg(r);
+      shMsg(`${esc(why)}${r.status===401?'<br>'+TOKEN_HINT:''}<br><span class="sg">GitHub 응답: ${esc(gm||String(r.status))} · "연결 확인"을 누르면 어디가 문제인지 알려드려요.</span>`,'bad');return;
     }
     try{localStorage.setItem(SH_TOKEN,token);}catch(e){}
     shSet({owner,repo,seenAt:payload.savedAt,dirty:false});
