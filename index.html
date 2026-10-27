@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>장소데이터팀 SLA 성과 시뮬레이터 v1.6</title>
+<title>장소데이터팀 SLA 성과 시뮬레이터</title>
 <style>
 :root{
   box-sizing:border-box;
@@ -200,6 +200,28 @@ table.ex{margin:8px 0 4px;min-width:420px}
 .csinote.ok{color:var(--pos);font-weight:600}
 .csinote.warn{color:var(--amber);font-weight:600}
 .resbox.actual{border-color:var(--pos);box-shadow:0 0 0 1px var(--pos) inset}
+.tabs{display:flex;gap:6px;margin:12px 0 6px;flex-wrap:wrap}
+.tab{border:1px solid var(--line);background:var(--card);color:var(--mut);border-radius:10px;padding:9px 18px;font-size:15.5px;font-weight:700;cursor:pointer}
+.tab:hover{color:var(--blue);border-color:var(--blue)}
+.tab.on{color:#fff;background:var(--blue);border-color:var(--blue)}
+.page:not([data-view="place"]) #card-top :is(.resbox-wrap,.tiles,#dx,#legend,#guide,#note,#qnote){display:none !important}
+.page:not([data-view="place"]) :is(#sec-err,#sec-quant,#sec-delay,#sec-csi,#weight-panel,#cfg-panel,[data-act="togc"],[data-act="togw"]){display:none !important}
+.view{margin-top:6px}
+.view .card{margin-top:14px}
+.view>.card:first-child{margin-top:0}
+.vh{margin:0 0 6px;font-size:20px;color:var(--ink)}
+.sprow{display:grid;grid-template-columns:minmax(200px,1.2fr) 3fr minmax(190px,.9fr);gap:12px;align-items:center;padding:12px 0;border-top:1px dashed var(--line)}
+.sprow:first-of-type{border-top:0}
+.spin{display:flex;gap:10px;flex-wrap:wrap}
+.spc{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mut);flex:1 1 90px;min-width:84px}
+.spin .spc:only-child{flex:0 1 240px}
+.spr .res{white-space:nowrap}
+.spr{text-align:right}
+@media (max-width:760px){.sprow{grid-template-columns:minmax(0,1fr)}.spr{text-align:left}}
+.chip{display:inline-block;padding:1px 9px;border-radius:999px;font-size:12.5px;font-weight:700;color:var(--mut);background:var(--soft);border:1px solid var(--line)}
+.chip.ok{color:var(--pos);border-color:var(--pos)}
+.rp-pb{page-break-after:always;break-after:page;height:0}
+.rp-grp td{background:#f1f5f9}
 .m1{display:grid;grid-template-columns:minmax(0,1fr)}
 .g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 @media (max-width:900px){.g3{grid-template-columns:minmax(0,1fr)}}
@@ -271,13 +293,13 @@ table.gd tr.gh td{background:var(--soft);text-align:left;white-space:normal;font
 <div class="page">
 
   <!-- 상단 대시보드 -->
-  <div class="card big">
+  <div class="card big" id="card-top">
     <div class="dtop">
       <div>
         <div class="titlerow">
           <span class="qpick"><select id="ysel" aria-label="연도"><option>2025</option><option>2026</option><option>2027</option><option>2028</option></select>년
             <select id="qsel" aria-label="분기"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select>분기</span>
-          <h1>장소데이터팀 SLA 성과 시뮬레이터</h1><button type="button" class="ver" id="verbtn" data-act="togver">v1.6</button><button type="button" class="ver sp hidden" id="sharepill" data-act="togs"></button>
+          <h1>장소데이터팀 SLA 성과 시뮬레이터</h1><button type="button" class="ver" id="verbtn" data-act="togver">v1.7</button><button type="button" class="ver sp hidden" id="sharepill" data-act="togs"></button>
         </div>
         <p class="note" id="note"></p>
         <div id="qnote"></div>
@@ -327,6 +349,8 @@ table.gd tr.gh td{background:var(--soft);text-align:left;white-space:normal;font
   <div id="cfg-panel" class="panel hidden"></div>
   <div id="imp-panel" class="panel hidden"></div>
 
+  <div id="view-div" class="view hidden"></div>
+  <div id="view-space" class="view hidden"></div>
   <div id="sec-err"></div>
   <div id="sec-quant"></div>
   <div id="sec-delay"></div>
@@ -454,15 +478,16 @@ const Q3_COUNT={'검결없':[7320,6500,6300,6100,5900,5700,3050],'메타키워�
 // 3분기부터: 후정제·프랜차이즈·영업시간·휴무일은 달마다 점수를 매겨 그 점수를 평균으로 쓴다 (업무 담당자 안내).
 // 1·2분기 공식 파일에서는 월평균 건수로 채점한 값과 맞았으므로, 파일을 불러오면 점수를 대조해서 맞는 방식으로 바로잡는다.
 function applyKnownScoring(S){
-  if(String(S.key)<'2026-3'||S.sm3)return false;
-  [1,4,5].forEach(i=>{const t=S.tasks[i];if(t)t.crit.forEach(c=>{c.sm='score';});});
-  S.sm3=true;
+  // 후정제·프랜차이즈·영업시간·휴무일: 공식 결과(2025년~2026년 3분기)는 모두 월평균 건수로 한 번에 채점한 값과 맞았다.
+  if(String(S.key)<'2026-3'||(S.smVer||0)>=2)return false;
+  [1,4,5].forEach(i=>{const t=S.tasks[i];if(t)t.crit.forEach(c=>{c.sm='value';});});
+  S.sm3=true;S.smVer=2;
   return true;
 }
 function applyKnownTargets(S){
   if(S.key!=='2026-3')return false;
   const ver=S.known3v||(S.known3?1:0);
-  if(ver>=2)return false;
+  if(ver>=3)return false;
   if(ver<1){   // v1: 검색 3개 업무 분기 평균 목표표
     Object.keys(Q3_COUNT).forEach(n=>{
       const t=S.tasks.find(x=>x.name===n);
@@ -477,7 +502,18 @@ function applyKnownTargets(S){
   if(fr&&fr.crit[0]){critFromVals(fr.crit[0],[24150,23860,23580,23150,22720,21020,16990]);fr.crit[0].mth=[null,null,null];}
   const jb=S.tasks[0];
   if(jb&&jb.crit[0]){const c=jb.crit[0];c.unit='%';c.label='지연율';critFromVals(c,[0.01,0.02,0.1,0.3,0.5,0.7,1.0]);}
-  S.known3=true;S.known3v=2;
+  if(ver<3){   // v3: 3분기 공식 결과 엑셀(2026-10-27)의 업무 비중과 기준값
+    const W3={0:0.0568,1:0.0135,2:0.0325,4:0.0269,5:0.0393,6:0.0054,7:0.0047,8:0.0054};
+    Object.keys(W3).forEach(i=>{if(S.tasks[i])S.tasks[i].w=W3[i];});
+    [0.0142,0.0281,0.0039].forEach((x,i)=>{if(S.csi[i])S.csi[i].w=x;});
+    const fr3=S.tasks[4]&&S.tasks[4].crit[0];if(fr3)fr3.th[6]=10000;                    // 프랜차이즈 0점 기준
+    const set3=(ti,vals,u)=>{const t=S.tasks[ti];if(!t||!t.crit[1])return;const c=t.crit[1];critFromVals(c,vals);if(u!==undefined)c.th[6]=u;};
+    set3(6,[7520,6700,6500,6300,6100,5900,3050]);                                        // 검결없 처리건: 엑셀 점수(93.18)로 역산한 목표표
+    set3(7,[12000,11200,10900,10600,10300,10000,5738],1476);                            // 메뉴검색 처리건: 엑셀의 기준값(100점 12,000)
+    set3(8,[13040,11300,11100,10900,10700,10500,5350],0);                                // 메타키워드 처리건: 엑셀 점수(87.12)로 역산한 목표표
+  }
+  S.inherited=null;S.confirmed=true;   // 3분기 공식 결과 엑셀의 값이 들어갔으니 "2분기 기준을 가져왔어요" 안내는 더 이상 필요 없다
+  S.known3=true;S.known3v=3;
   return true;
 }
 // 공식 결과가 나온 분기(1·2분기)는 CSI 실제 점수가 반영된 상태(csiActual)
@@ -488,6 +524,7 @@ function blankValues(D){
   D.csi.forEach(b=>b.vals=['','','','','']);
   D.errs.forEach(e=>e.m=['','','']);
   D.csiActual=false;   // 값을 비우면 CSI 실제 점수도 아직 없는 상태
+  if(D.space){D.space.tasks.forEach(t=>t.crit.forEach(c=>{c.v='';}));D.space.actual=false;D.space.prefilled=false;}
   return D;
 }
 // 예상/실제 구분: CSI 업무만족도 평가는 나중에 나오므로, 실제 점수가 반영됐다고 표시하고 CSI 3개 업무코드가 모두 있을 때만 "실제"로 본다
@@ -497,7 +534,7 @@ function scoreStatus(S){
   return{filledAny,filledAll,actual:!!S.csiActual&&filledAll};
 }
 function defaultFor(key){
-  if(PRESETS[key])return PRESETS[key]();
+  if(PRESETS[key]){const P=PRESETS[key]();P.space=defaultSpace(key);return P;}
   const ks=presetKeys();
   let src=null;for(const k of ks)if(k<key)src=k;
   if(!src)src=ks[0];
@@ -507,6 +544,7 @@ function defaultFor(key){
   if(key>='2026-3')D.tasks[3].on=false; // 3분기부터 빌보드 업무량 체크 제외
   if(applyKnownTargets(D))D.known3Seen=false;
   if(applyKnownScoring(D))D.sm3Seen=false;
+  D.space=defaultSpace(key);   // 공간데이터팀: 직전 분기 점수를 예상값으로 채워 둔다
   return D;
 }
 
@@ -618,14 +656,15 @@ function compute0(S){
 // ===== 상위 등급 달성 가이드 =====
 // 점수가 다음 등급 기준을 "초과"하려면 항목 하나를 얼마나 개선해야 하는지를 항목마다 따로 계산한다 (나머지는 그대로).
 // 처리건·지연율은 입력한 달을 모두 같은 양만큼 옮기고, 오류건은 합계를 줄이고, CSI는 항목 점수를 같은 양만큼 올린다.
-function growthGuide(S){
-  const R0=compute(S);
-  if(!R0.has)return null;
-  const gi=R0.grade;
-  if(gi===0)return{top:true,team:R0.team,grade:gi};
-  const cut=CUT[gi-1],base=R0.team,EPS=1e-7;
+function growthGuide(S,mode){
+  const div=mode==='div';
+  const R0=compute(S),D0=div?computeDivision(S):null;
+  if(div?!D0.has:!R0.has)return null;
+  const gi=div?D0.grade:R0.grade,base=div?D0.score:R0.team;
+  if(gi===0)return{top:true,team:base,grade:gi,mode:div?'div':'team'};
+  const cut=CUT[gi-1],EPS=1e-7;
   const clone=()=>JSON.parse(JSON.stringify(S));
-  const score=mod=>{const T=clone();mod(T);return compute(T).team;};
+  const score=mod=>{const T=clone();mod(T);return div?computeDivision(T).score:compute(T).team;};
   const bis=(f,max)=>{let lo=0,hi=max;for(let i=0;i<45;i++){const mid=(lo+hi)/2;if(f(mid)>cut+EPS)hi=mid;else lo=mid;}return hi;};
   const levers=[];
   // 1) 정량·기한준수: 입력한 달을 모두 같은 양만큼 개선 방향으로 이동
@@ -679,6 +718,23 @@ function growthGuide(S){
     const avgAfter=filled(S.csi[bi].vals.map(v=>isNum(v)?Math.min(100,num(v)+dd):v)).reduce((a,x)=>a+x,0)/fv.length;
     levers.push({kind:'c',name,cur,tgt:avgAfter,delta:avgAfter-cur,rel:(avgAfter-cur)/Math.max(cur,1e-9),after,gradeAfter:gradeOf(after),unit:'점',gainMax});
   });
+  // 공간데이터팀 정성평가 (로컬운영실 단위에서만): 업무의 평가 점수를 같은 양만큼 올린다 (최대 100점)
+  if(div&&S.space)S.space.tasks.forEach((t,ti)=>{
+    const cur=spaceTaskScore(t);
+    if(cur===null||cur>=100)return;
+    const shift=(T,d)=>{T.space.tasks[ti].crit.forEach(c=>{if(isNum(c.v))c.v=Math.min(100,num(c.v)+d);});};
+    const maxD=100-Math.min(...t.crit.filter(c=>isNum(c.v)).map(c=>num(c.v)));
+    if(!(maxD>0))return;
+    const name='공간 · '+String(t.codeName||'').replace('(턴키) ','')+' · '+t.name;   // 같은 이름의 CSI 업무가 코드마다 있어서 코드 이름을 붙인다
+    const gainMax=score(T=>shift(T,maxD))-base;
+    if(base+gainMax<=cut+EPS){levers.push({kind:'s',name,cur,unit:'점',impossible:true,gainMax});return;}
+    let dd=bis(x=>score(T=>shift(T,x)),maxD);
+    dd=Math.ceil(dd/0.5-1e-9)*0.5;
+    let guard=0;while(score(T=>shift(T,dd))<=cut+EPS&&guard++<8)dd+=0.5;
+    const after=score(T=>shift(T,dd));
+    const tgt=spaceTaskScore({crit:t.crit.map(c=>({cw:c.cw,v:isNum(c.v)?Math.min(100,num(c.v)+dd):c.v}))});
+    levers.push({kind:'s',name,cur,tgt,delta:tgt-cur,rel:(tgt-cur)/Math.max(cur,1e-9),after,gradeAfter:gradeOf(after),unit:'점',gainMax});
+  });
   // 오류건 두 곳을 함께 줄이는 조합 (한쪽만으로는 안 되거나, 합쳐서 더 적게 줄여도 될 때)
   const ns=S.errs.map(e=>aggOf(e.m,e.agg)||0);
   let combo=null;
@@ -700,10 +756,70 @@ function growthGuide(S){
     return(n>0&&r>0)?{name:e.name,n,eq:n-r,per,pt:isNum(e.pt)?Number(e.pt):1}:null;
   }).filter(Boolean);
   // 정렬: 오류건(협의로 조정) → CSI(정성) → 처리량·지연율, 각 묶음 안에서는 개선 폭이 작은 순서
-  const ORD={e:0,c:1,q:2};
+  const ORD={e:0,c:1,s:2,q:3};
   const ok=levers.filter(l=>!l.impossible).sort((a,b)=>ORD[a.kind]-ORD[b.kind]||(a.kind==='e'?(b.delta-a.delta):a.rel-b.rel));
   const no=levers.filter(l=>l.impossible).sort((a,b)=>b.gainMax-a.gainMax);
-  return{top:false,team:base,grade:gi,cut,need:cut-base,next:gi-1,levers:[...ok,...no],combo,odd};
+  return{top:false,team:base,grade:gi,cut,need:cut-base,next:gi-1,levers:[...ok,...no],combo,odd,mode:div?'div':'team'};
+}
+
+// ===== 공간데이터팀 (정성평가만 있는 팀) · 로컬운영실 =====
+// 공간데이터팀 점수 = Σ(업무 비중 × 업무 점수) ÷ Σ업무 비중, 업무 점수 = 평가기준 점수의 가중평균 (5개 분기 공식 결과로 확인)
+// 로컬운영실 점수 = 장소데이터팀·공간데이터팀 점수의 가중평균 (팀 비중 = 각 팀의 합산 비중)
+const SPACE_PRESET_DATA={"2026-1":[{"code":"S001424","codeName":"(턴키) 교통","name":"대중교통 데이터 품질","w":0.0048,"crit":[{"label":"품질","cw":1,"v":91}]},{"code":"S001424","codeName":"(턴키) 교통","name":"버스 업데이트 지연","w":0.0057,"crit":[{"label":"일정","cw":1,"v":88.33}]},{"code":"S001424","codeName":"(턴키) 교통","name":"업무만족도 평가(구CSI)","w":0.0038,"crit":[{"label":"역량","cw":1,"v":90.33},{"label":"태도","cw":1,"v":90.33},{"label":"적극","cw":1,"v":90},{"label":"일정","cw":1,"v":89},{"label":"품질","cw":1,"v":90.33}]},{"code":"S001424","codeName":"(턴키) 교통","name":"지하철 및 지역간 업데이트 지연","w":0.0048,"crit":[{"label":"일정","cw":1,"v":88}]},{"code":"S001425","codeName":"(턴키) 지도배경","name":"업무만족도 평가(구CSI)","w":0.0057,"crit":[{"label":"역량","cw":1,"v":91},{"label":"태도","cw":1,"v":91.67},{"label":"적극","cw":1,"v":87.67},{"label":"일정","cw":1,"v":90.67},{"label":"품질","cw":1,"v":90.33}]},{"code":"S001425","codeName":"(턴키) 지도배경","name":"일반 배경(건물, 단지, 공원, 부동산)_데이터 품질","w":0.0086,"crit":[{"label":"품질","cw":1,"v":90}]},{"code":"S001425","codeName":"(턴키) 지도배경","name":"일반 배경(건물, 단지, 공원, 부동산)_배포지연","w":0.0143,"crit":[{"label":"일정","cw":1,"v":90}]},{"code":"S001462","codeName":"(턴키) 교통 및 지도배경 제보","name":"CS 답변 품질","w":0.0076,"crit":[{"label":"품질","cw":1,"v":90.33}]},{"code":"S001462","codeName":"(턴키) 교통 및 지도배경 제보","name":"CS처리 일정 준수","w":0.0076,"crit":[{"label":"일정","cw":1,"v":90.33}]},{"code":"S001462","codeName":"(턴키) 교통 및 지도배경 제보","name":"업무만족도 평가(구CSI)","w":0.0038,"crit":[{"label":"역량","cw":1,"v":90.33},{"label":"태도","cw":1,"v":89.67},{"label":"적극","cw":1,"v":88.33},{"label":"일정","cw":1,"v":90.33},{"label":"품질","cw":1,"v":90.33}]}],"2026-2":[{"code":"S001424","codeName":"(턴키) 교통","name":"대중교통 데이터 품질","w":0.0047,"crit":[{"label":"품질","cw":1,"v":90}]},{"code":"S001424","codeName":"(턴키) 교통","name":"버스 업데이트 지연","w":0.0057,"crit":[{"label":"일정","cw":1,"v":90}]},{"code":"S001424","codeName":"(턴키) 교통","name":"업무만족도 평가(구CSI)","w":0.0038,"crit":[{"label":"역량","cw":0.2,"v":91.67},{"label":"태도","cw":0.2,"v":90},{"label":"적극","cw":0.2,"v":92.33},{"label":"일정","cw":0.2,"v":90},{"label":"품질","cw":0.2,"v":90}]},{"code":"S001424","codeName":"(턴키) 교통","name":"지하철 및 지역간 업데이트 지연","w":0.0047,"crit":[{"label":"일정","cw":1,"v":90}]},{"code":"S001425","codeName":"(턴키) 지도배경","name":"업무만족도 평가(구CSI)","w":0.0057,"crit":[{"label":"역량","cw":0.2,"v":86.67},{"label":"태도","cw":0.2,"v":90},{"label":"적극","cw":0.2,"v":90},{"label":"일정","cw":0.2,"v":90},{"label":"품질","cw":0.2,"v":86.67}]},{"code":"S001425","codeName":"(턴키) 지도배경","name":"일반 배경(건물, 단지, 공원, 부동산)_데이터 품질","w":0.0085,"crit":[{"label":"품질","cw":1,"v":86.67}]},{"code":"S001425","codeName":"(턴키) 지도배경","name":"일반 배경(건물, 단지, 공원, 부동산)_배포지연","w":0.0142,"crit":[{"label":"일정","cw":1,"v":90}]},{"code":"S001462","codeName":"(턴키) 교통 및 지도배경 제보","name":"CS 답변 품질","w":0.0076,"crit":[{"label":"품질","cw":1,"v":90}]},{"code":"S001462","codeName":"(턴키) 교통 및 지도배경 제보","name":"CS처리 일정 준수","w":0.0076,"crit":[{"label":"일정","cw":1,"v":90}]},{"code":"S001462","codeName":"(턴키) 교통 및 지도배경 제보","name":"업무만족도 평가(구CSI)","w":0.0038,"crit":[{"label":"역량","cw":0.2,"v":90},{"label":"태도","cw":0.2,"v":90},{"label":"적극","cw":0.2,"v":90},{"label":"일정","cw":0.2,"v":90},{"label":"품질","cw":0.2,"v":90}]}]};
+function spaceFromTasks(tasks,actual,prefilled){
+  return{tasks:tasks.map(t=>({code:t.code,codeName:t.codeName||'',name:t.name,w:t.w,crit:t.crit.map(c=>({label:c.label,cw:c.cw,v:c.v}))})),actual:!!actual,prefilled:!!prefilled};
+}
+function defaultSpace(key){
+  const ks=Object.keys(SPACE_PRESET_DATA).sort();
+  if(SPACE_PRESET_DATA[key])return spaceFromTasks(SPACE_PRESET_DATA[key],true,false);   // 공식 결과가 나온 분기
+  let src=null;for(const k of ks)if(k<key)src=k;
+  if(!src)src=ks[0];
+  return spaceFromTasks(SPACE_PRESET_DATA[src],false,true);                              // 새 분기: 직전 분기 값을 예상으로
+}
+function spaceTaskScore(t){
+  const fv=(t.crit||[]).filter(c=>isNum(c.v));
+  if(!fv.length)return null;
+  const ws=fv.reduce((a,c)=>a+(num(c.cw)||1),0);
+  return r2(fv.reduce((a,c)=>a+(num(c.cw)||1)*num(c.v),0)/ws);
+}
+function computeSpace(S){
+  const prev=SCHEME_KEY;useScheme(S.key);
+  try{
+    const R={tasks:[],codes:{},skipped:[],has:false,W:0,sS:0,team:0,grade:CUT.length};
+    const sp=S.space;
+    if(!sp||!Array.isArray(sp.tasks))return R;
+    const cw={},cn={},nm={};
+    sp.tasks.forEach(t=>{
+      const s=spaceTaskScore(t);
+      if(s===null){R.tasks.push({s:null,g:CUT.length,empty:true});R.skipped.push(t.name);return;}
+      R.tasks.push({s,g:gradeOf(s),empty:false});
+      R.sS+=t.w*s;R.W+=t.w;
+      cw[t.code]=(cw[t.code]||0)+t.w;cn[t.code]=(cn[t.code]||0)+t.w*s;nm[t.code]=t.codeName;
+    });
+    Object.keys(cw).forEach(k=>{const s=cw[k]?cn[k]/cw[k]:0;R.codes[k]={s,g:gradeOf(s),w:cw[k],name:nm[k]};});
+    R.has=R.W>0;R.team=R.W?R.sS/R.W:0;R.grade=gradeOf(R.team);
+    return R;
+  }finally{useScheme(prev);}
+}
+function spaceStatus(S){
+  const sp=S.space||{tasks:[]};
+  const sc=sp.tasks.map(spaceTaskScore);
+  const filledAny=sc.some(x=>x!==null),filledAll=sc.length>0&&sc.every(x=>x!==null);
+  return{filledAny,filledAll,actual:!!sp.actual&&filledAll,prefilled:!!sp.prefilled};
+}
+function computeDivision(S){
+  const prev=SCHEME_KEY;useScheme(S.key);
+  try{
+    const P=compute(S),Sp=computeSpace(S);
+    const parts=[];
+    if(P.has)parts.push({key:'place',name:'장소데이터팀',W:P.W,s:P.team});
+    if(Sp.has)parts.push({key:'space',name:'공간데이터팀',W:Sp.W,s:Sp.team});
+    const W=parts.reduce((a,p)=>a+p.W,0),score=W?parts.reduce((a,p)=>a+p.W*p.s,0)/W:0;
+    const qualW=P.wN+Sp.W,qual=qualW?(P.sN+Sp.sS)/qualW:0;     // 정성평가: 장소데이터팀 CSI + 공간데이터팀 전체
+    const s1=scoreStatus(S),s2=spaceStatus(S);
+    return{has:parts.length>0,complete:parts.length===2,parts,W,score,grade:gradeOf(score),place:P,space:Sp,
+      quant:P.quant,quantW:P.wQ,qual,qualW,ded:P.ded,statusPlace:s1,statusSpace:s2,actual:s1.actual&&s2.actual};
+  }finally{useScheme(prev);}
 }
 //</core>
 
@@ -823,6 +939,7 @@ function importRaw0(S,rows){
       const th=thCols.map(k=>Number(r[k]));
       if(isNaN(th[6])&&!isNaN(th[5]))th[6]=th[5];   // 2025년까지는 U등급 열이 없다(N등급이 0점)
       if(th.every(x=>!isNaN(x))&&r[thCols[0]]!==''){
+        c._prev={th:c.th.slice(),p100:c.p100};   // 불러오기 전 기준값 (파일 점수를 재현하면 그대로 쓴다)
         c.th=th;
         const keep=(ti===6||ti===7)&&ci===1;          // 검결없·메뉴검색 처리건의 100점 기준(6,000·12,000)은 2025년 1·3분기 점수로 확인된 값
         if(S.key<'2026-1'&&!keep)c.p100='';            // 그 밖의 100점 기준은 분기마다 달라서 옛 분기에는 자동값을 쓴다
@@ -856,7 +973,15 @@ function importRaw0(S,rows){
       if(am&&!bm)c.sm='value';else if(bm&&!am)c.sm='score';else c.sm=keep||'value';
       if(c.sm!==keep&&(am!==bm))rep.notes.push(`${lab}: 파일 점수는 ${c.sm==='score'?'달마다 점수를 매겨 평균낸 값':'월평균 건수로 채점한 값'}과 맞아서 채점 방식을 그렇게 바꿨어요`);
     }
-    const mine=r2(critScore(c));
+    let mine=r2(critScore(c));
+    if(Math.abs(mine-score)>0.02&&c._prev&&c._prev.th){   // 파일의 기준값이 조정 전 값이면, 원래 들어 있던 기준표가 파일 점수를 재현하는지 먼저 본다
+      const fth=c.th,fp=c.p100;
+      c.th=c._prev.th;c.p100=c._prev.p100;
+      const m2=r2(critScore(c));
+      if(Math.abs(m2-score)<=0.02){mine=m2;rep.notes.push(`${lab}: 파일의 기준값은 조정 전 값이라 기본 목표표를 그대로 써서 파일 점수(${score.toFixed(2)})와 맞췄어요`);}
+      else{c.th=fth;c.p100=fp;}
+    }
+    delete c._prev;
     if(Math.abs(mine-score)>0.02){
       c.ov=score;
       const er=equivRatio(c,score);
@@ -864,6 +989,7 @@ function importRaw0(S,rows){
       rep.pins.push(`${lab}: 파일 점수 ${score.toFixed(2)}와 계산(${mine.toFixed(2)})이 달라서 파일 점수로 고정했어요.${hint} 달마다 목표량이 조정됐다면 "월별 설정"에 그 달 기준표를 넣으면 고정을 풀 수 있어요`);
     }
   });
+  S.tasks.forEach(t=>t.crit.forEach(c=>{delete c._prev;}));
   S.tasks.forEach((t,i)=>{
     if(seen.has(i))t.on=true;
     else{t.on=false;rep.notes.push(`${t.name}: 파일에 없어서 평가에서 제외했어요`);}
@@ -880,7 +1006,35 @@ function importRaw0(S,rows){
     fw+=f.w;fs+=f.w*f.s;
   });
   if(codes.length&&fw>0)rep.verify={mine:R.team,file:fs/fw,codes,ok:Math.abs(R.team-fs/fw)<=0.05};
+  // 같은 파일에 공간데이터팀(정성평가 팀)이 있으면 함께 읽는다
+  const sp=importSpaceRows(S,rows);
+  if(sp){rep.space=sp;rep.ok.push(`공간데이터팀 ${sp.n}개 업무`);}
   return rep;
+}
+// 공간데이터팀: 업무마다 평가기준(품질·일정, CSI 5항목) 점수와 비중을 그대로 읽는다
+function importSpaceRows(S,rows){
+  return null;   // 장소데이터팀 전용: 공간데이터팀 행은 읽지 않는다
+  const team=rows.filter(r=>String(r['운영팀']).trim()==='공간데이터팀');
+  if(!team.length)return null;
+  const ks=Object.keys(team[0]);
+  const kk=re=>ks.find(k=>re.test(k.replace(/\s/g,'')));
+  const kTW=kk(/^합[산상]비중\(수행업무\)/),kTS=kk(/^점수\(수행업무\)/),kCS=kk(/^점수\(평가기준\)/),kC3=kk(/^(3차비중\(평가기준\)|비중\(평가기준\))/);
+  if(!kTW||!kCS)return null;
+  const tasks=[],idx=new Map();
+  team.forEach(r=>{
+    const code=String(r['업무코드']).trim(),nm=String(r['수행업무']).trim(),w=Number(r[kTW]);
+    if(isNaN(w))return;
+    const key=code+'|'+nm+'|'+w;
+    let t=idx.get(key);
+    if(!t){t={code,codeName:String(r['업무명']==null?'':r['업무명']).trim(),name:nm,w,crit:[],fileScore:kTS?Number(r[kTS]):NaN};idx.set(key,t);tasks.push(t);}
+    const raw=r[kCS],v=Number(raw);
+    t.crit.push({label:String(r['평가기준']).trim(),cw:(kC3&&Number(r[kC3]))||1,v:(String(raw).trim()===''||isNaN(v))?'':v});
+  });
+  if(!tasks.length)return null;
+  S.space={tasks:tasks.map(t=>({code:t.code,codeName:t.codeName,name:t.name,w:t.w,crit:t.crit})),actual:true,prefilled:false};
+  let bad=0;
+  tasks.forEach((t,i)=>{const mine=spaceTaskScore(S.space.tasks[i]);if(!isNaN(t.fileScore)&&mine!==null&&Math.abs(mine-t.fileScore)>0.02)bad++;});
+  return{n:tasks.length,bad,team:computeSpace(S).team};
 }
 // 텍스트: 한 줄에 "항목명  1월값  2월값  3월값" (엑셀에서 복사한 탭 구분도 가능)
 function splitNums(s){
@@ -1391,7 +1545,8 @@ function parseAdjustText(text){
 }
 //</extract>
 
-const APP_VERSION='v1.6',APP_DATE='2026-10-14';
+const APP_VERSION='v1.7',APP_DATE='2026-10-27';
+let VIEW='place';   // 장소데이터팀 전용 화면 (탭 없음)
 
 /* ---------- 상태: 분기별로 따로 저장 ---------- */
 const STORE='sla-sim-jangso-v4';
@@ -1402,6 +1557,7 @@ function normState(st){
   const D0=makeDef();
   while(st.tasks.length<D0.tasks.length)st.tasks.push(JSON.parse(JSON.stringify(D0.tasks[st.tasks.length])));   // 맵데이터연결(2025년 1·2분기 업무) 추가분
   st.tasks.forEach(t=>t.crit.forEach(c=>{if(!Array.isArray(c.x))c.x=[false,false,false];}));
+  if(!st.space||!Array.isArray(st.space.tasks)||!st.space.tasks.every(t=>Array.isArray(t.crit)&&t.crit.every(c=>c&&('v' in c))))st.space=defaultSpace(st.key);   // 공간데이터팀(정성평가 팀)
   if(typeof st.csiActual!=='boolean')st.csiActual=!!st.fileScore||!!PRESETS[st.key];   // 공식 결과로 채워진 분기는 실제 점수, 나머지는 예상
   {  // 기준값 순서가 맞지 않으면(예전에 잘못 읽힌 값 등) 기본값으로 되돌린다
     const D1=makeDef();
@@ -1698,8 +1854,8 @@ function update(){
   // 안내 줄
   const notes=[];
   if(S.inherited&&!S.confirmed)notes.push(`<div class="qn warn">${esc(qLabel(S.key))} 기준표는 아직 없어서 <b>${esc(qLabel(S.inherited))}</b>의 기준값·비중을 가져왔어요. 이 분기 값과 다르면 아래 "기준표·비중"이나 "점수 불러오기"로 바꿔주세요. <button type="button" class="lnk" data-act="confirmq">확인했어요</button></div>`);
-  if(S.known3&&!S.known3Seen)notes.push(`<div class="qn"><b>3분기 기준표</b>를 반영했어요: 검색 3개 업무(검결없·메뉴검색·메타키워드) 평균 목표, <b>프랜차이즈 8MM 기준</b>, <b>장소제보 처리 지연율(%) 기준</b>(100점 0.01%). 검색 3개 업무는 월별이 아니라 <b>분기 평균 값 한 칸</b>으로 점수를 내요. 프랜차이즈를 다른 MM으로 운영한 달은 항목 아래 "월 제외·목표 조정"에서 조정하세요. <button type="button" class="lnk" data-act="seen3">확인했어요</button></div>`);
-  if(S.sm3&&!S.sm3Seen)notes.push(`<div class="qn">후정제·프랜차이즈·영업시간·휴무일은 <b>달마다 점수를 매기고 그 점수를 평균</b>으로 계산해요(3분기 기준). 1·2분기 공식 파일에서는 월평균 건수로 채점한 값과 맞았어요. 각 항목 아래 "채점" 버튼으로 바꿀 수 있고, 공식 결과 파일을 불러오면 점수를 대조해서 맞는 방식으로 자동 설정해요. <button type="button" class="lnk" data-act="seen4">확인했어요</button></div>`);
+  if(S.known3&&!S.known3Seen)notes.push(`<div class="qn"><b>3분기 공식 결과 엑셀(10/27)</b>에 맞춰 업무 비중과 기준값을 갱신했어요. 검색 처리건 목표표는 엑셀 점수로 <b>역산한 값</b>이라(검결없·메타키워드), 확정된 목표표가 있으면 알려주세요. 프랜차이즈를 다른 MM으로 운영한 달은 항목 아래 \"월 제외·목표 조정\"에서 조정하세요. <button type="button" class="lnk" data-act="seen3">확인했어요</button></div>`);
+  if(S.sm3&&!S.sm3Seen)notes.push(`<div class="qn">후정제·프랜차이즈·영업시간·휴무일은 <b>월평균 건수로 한 번에 채점</b>해요. 3분기 공식 결과 엑셀(영업시간 94.67, 프랜차이즈 99.35)이 이 방식과 맞아서 기본값을 되돌렸어요. 각 항목 아래 \"채점\" 버튼으로 바꿀 수 있어요. <button type="button" class="lnk" data-act="seen4">확인했어요</button></div>`);
   if(schemeOf(S.key)===1)notes.push(`<div class="qn">${esc(qLabel(S.key))}은 <b>옛 등급표</b>(N등급 50점 이하, U등급 없음, 기준값의 마지막 열이 0점)로 계산해요.</div>`);
   if(R.skipped.length)notes.push(`<div class="qn">입력이 없는 항목 ${R.skipped.length}개는 계산에서 제외했어요: ${R.skipped.map(esc).join(', ')}</div>`);
   $('qnote').innerHTML=notes.join('');
@@ -1726,6 +1882,7 @@ function update(){
   $('legend').innerHTML=legendHTML(has?R.grade:-1);
   if(GUIDE_OPEN){clearTimeout(guideT);guideT=setTimeout(renderGuide,150);}
   const ws=$('wsum');if(ws)ws.textContent=R.W.toFixed(4);
+  updateSpace();updateDiv();
   save();
 }
 
@@ -1795,6 +1952,7 @@ function importSheet(name){
     if(!rep){showImp('이 시트에서 장소데이터팀 행을 찾지 못했어요.','bad');return;}
     S.inherited=null;S.confirmed=true;
     S.fileScore=rep.verify?{team:rep.verify.file}:null;
+    if(rep.space)rep.notes.push(`공간데이터팀 ${rep.space.n}개 업무를 함께 불러왔어요 (팀 점수 ${f2(rep.space.team)}점${rep.space.bad?`, 파일의 업무 점수와 다른 업무 ${rep.space.bad}개`:' · 파일의 업무 점수와 모두 일치'}). 실제 점수로 표시돼요.`);
     openMth.clear();init();
     showImp(reportHTML(`${qLabel(S.key)} (${name}) 시트에서 ${rep.ok.length}개 항목을 불러왔어요.`,rep,
       '평가한 달은 파일의 성과값으로 추정했고, 달마다 조정된 목표량은 파일에 없어서 점수가 다르면 고정했어요.'),rep.verify&&!rep.verify.ok?'bad':'ok');
@@ -1889,12 +2047,14 @@ document.addEventListener('input',e=>{
   }
   else if(d.eper!==undefined){S.errs[+d.eper].perN=rd(el.value);}
   else if(d.ept!==undefined){S.errs[+d.ept].pt=rd(el.value);}
+  else if(d.sp){const [ti,ci]=d.sp.split(':').map(Number);S.space.tasks[ti].crit[ci].v=rd(el.value);}
   else return;
   update();
 });
 document.addEventListener('change',e=>{
   const el=e.target,d=el.dataset||{};
   if(el.id==='csi-actual'){S.csiActual=el.checked;markDirty();update();return;}
+  if(el.id==='space-actual'){S.space.actual=el.checked;if(el.checked)S.space.prefilled=false;markDirty();update();return;}
   if(d.ton!==undefined||d.mx||d.mton)markDirty();
   if(d.ton!==undefined){S.tasks[+d.ton].on=el.checked;init();}
   else if(d.mx){const [id,k]=d.mx.split(':');const c=critById(id);if(!c.x)c.x=[false,false,false];c.x[+k]=!el.checked;init();}
@@ -1933,6 +2093,9 @@ document.addEventListener('change',e=>{
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act;
+  if(a==='tab'){setView(b.dataset.v);return;}
+  if(a==='dvguide'){DV_GUIDE_OPEN=!DV_GUIDE_OPEN;updateDiv();renderDvGuide();return;}
+  if(a==='spprev'){markDirty();if(fillSpaceFromPrev())init();return;}
   if(['clear','defaults','excl','incl','resetw','resetc','smtog','addov','clrov','mfill','imgapply','confirmq'].includes(a))markDirty();
   if(a==='excl'){S.tasks[+b.dataset.ti].on=false;init();}
   else if(a==='incl'){S.tasks[+b.dataset.ti].on=true;init();}
@@ -1967,7 +2130,12 @@ document.addEventListener('click',e=>{
     S.errs.forEach((x,i)=>{x.perN=D.errs[i].perN;x.pt=D.errs[i].pt;});
     init();
   }
-  else if(a==='clear'){blankValues(S);S.fileScore=null;openMth.clear();init();showImp('');}
+  else if(a==='clear'){
+    if(VIEW==='space'){S.space.tasks.forEach(t=>t.crit.forEach(c=>{c.v='';}));S.space.actual=false;S.space.prefilled=false;}
+    else if(VIEW==='place'){const sp=S.space;blankValues(S);S.space=sp;S.fileScore=null;}
+    else{blankValues(S);S.fileScore=null;}
+    openMth.clear();init();showImp('');
+  }
   else if(a==='defaults'){S=defaultFor(S.key);DATA[S.key]=S;openMth.clear();init();}
   else if(a==='confirmq'){S.confirmed=true;update();}
   else if(a==='seen3'){S.known3Seen=true;update();}
@@ -2352,6 +2520,58 @@ function pdfReportHTML(){
   h+=`<h2>계산 방식과 유의사항</h2><ul class="rp-ul">${notes.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`;
   return h;
 }
+
+/* ---------- 결과 PDF: 로컬운영실 종합 · 공간데이터팀 ---------- */
+function pdfWhen(){const n=new Date(),p=x=>String(x).padStart(2,'0');return `${n.getFullYear()}-${p(n.getMonth()+1)}-${p(n.getDate())} ${p(n.getHours())}:${p(n.getMinutes())}`;}
+function pdfDivisionHTML(){
+  const D=computeDivision(S);
+  let h=`<div class="rp-head"><div><h1>로컬운영실 SLA 성과 시뮬레이션 결과</h1><div class="rp-sub">${esc(qLabel(S.key))} · 출력 ${pdfWhen()} · SLA 시뮬레이터 ${APP_VERSION}</div></div></div>`;
+  h+=`<div class="rp-note">이 문서는 시뮬레이션 결과이며 공식 SLA 평가 결과와 다를 수 있어요. ${D.actual?'<b>두 팀의 실제 점수가 반영된 점수예요.</b>':'<b>실제 점수가 모두 반영되기 전의 예상 점수예요.</b>'}</div>`;
+  if(!D.has)return h+'<div class="rp-warn">입력된 값이 없어서 점수를 계산하지 못했어요.</div><div class="rp-pb"></div>';
+  const gi=D.grade;
+  h+=`<div class="rp-sum"><div class="rp-big"><div class="rp-lab">${D.actual?'로컬운영실 점수 (실제)':'예상 로컬운영실 점수'}</div><div class="rp-num">${f2(D.score)}<span>점</span></div></div>
+    <div class="rp-big"><div class="rp-lab">${D.actual?'등급 (실제)':'예상 등급'}</div><div class="rp-grade" style="color:${GCP[gi]}">${GR[gi]}</div><div class="rp-inc">${esc(incTxt(gi))}</div></div></div>`;
+  if(!D.complete)h+=`<div class="rp-warn">${D.parts.map(p=>p.name).join('·')}만으로 계산한 값이에요 (다른 팀 값이 없어요).</div>`;
+  h+=`<h2>팀별 점수</h2><table class="rp-t"><tr><th class="l">팀</th><th>합산 비중</th><th>팀 점수</th><th>등급</th><th>반영되는 몫</th><th>상태</th></tr>`+
+    [['place','장소데이터팀',D.place,D.statusPlace],['space','공간데이터팀',D.space,D.statusSpace]].map(([k,nm,R,st])=>{
+      const p=D.parts.find(x=>x.key===k);
+      return p?`<tr><td class="l">${nm}</td><td class="n">${p.W.toFixed(4)} (${(p.W/D.W*100).toFixed(1)}%)</td><td class="n">${f2(p.s)}</td><td class="c">${rg(R.grade)}</td><td class="n">${f2(p.W*p.s/D.W)}</td><td class="c">${st.actual?'실제':'예상'}</td></tr>`
+        :`<tr><td class="l">${nm}</td><td colspan="5">값이 없어요</td></tr>`;
+    }).join('')+`<tr><td class="l"><b>로컬운영실</b></td><td class="n">${D.W.toFixed(4)}</td><td class="n"><b>${f2(D.score)}</b></td><td class="c">${rg(gi)}</td><td></td><td class="c">${D.actual?'실제':'예상'}</td></tr></table>`;
+  if(D.parts.length===2)h+=`<div class="rp-note">계산: (${D.parts[0].W.toFixed(4)} × ${f2(D.parts[0].s)} + ${D.parts[1].W.toFixed(4)} × ${f2(D.parts[1].s)}) ÷ ${D.W.toFixed(4)} = ${f2(D.score)}</div>`;
+  h+=`<h2>점수 구성</h2><table class="rp-t"><tr><th class="l">구분</th><th>환산 점수</th><th>비중 합</th></tr>
+    <tr><td class="l">정량평가 (장소데이터팀)</td><td class="n">${D.quantW?f2(D.quant):'–'}</td><td class="n">${D.quantW?D.quantW.toFixed(4):'–'}</td></tr>
+    <tr><td class="l">정성평가 (장소데이터팀 CSI + 공간데이터팀)</td><td class="n">${D.qualW?f2(D.qual):'–'}</td><td class="n">${D.qualW?D.qualW.toFixed(4):'–'}</td></tr>
+    <tr><td class="l">오류차감 (장소데이터팀)</td><td class="n">${D.place.has?f2(D.ded):'–'}</td><td></td></tr></table>`;
+  const G=growthGuide(S,'div');
+  if(G&&!G.top){
+    const top=G.levers.filter(l=>!l.impossible).slice(0,3);
+    if(top.length)h+=`<div class="rp-note">상위 등급(${GR[G.next]}, ${G.cut}점 초과)까지 ${f2(G.need)}점 — 항목 하나만 개선한다면: ${top.map(l=>guideLine(l)).join(' / ')}</div>`;
+  }
+  return h+'<div class="rp-pb"></div>';
+}
+function pdfSpaceHTML(){
+  const Rs=computeSpace(S),st=spaceStatus(S);
+  let h=`<div class="rp-pb"></div><div class="rp-head"><div><h1>공간데이터팀 SLA 성과 시뮬레이션 결과</h1><div class="rp-sub">${esc(qLabel(S.key))} · 정성평가</div></div></div>`;
+  h+=`<div class="rp-note">${st.actual?'<b>실제 점수가 반영된 점수예요.</b>':'<b>실제 점수가 반영되기 전의 예상 점수예요'+(st.prefilled?' (직전 분기 점수를 예상값으로 사용)':'')+'.</b>'}</div>`;
+  if(!Rs.has)return h+'<div class="rp-warn">입력된 점수가 없어서 계산하지 못했어요.</div>';
+  const gi=Rs.grade;
+  h+=`<div class="rp-sum"><div class="rp-big"><div class="rp-lab">${st.actual?'팀 점수 (실제)':'예상 팀 점수'}</div><div class="rp-num">${f2(Rs.team)}<span>점</span></div></div>
+    <div class="rp-big"><div class="rp-lab">${st.actual?'등급 (실제)':'예상 등급'}</div><div class="rp-grade" style="color:${GCP[gi]}">${GR[gi]}</div><div class="rp-inc">${esc(incTxt(gi))}</div></div></div>`;
+  h+=`<h2>업무 상세</h2><table class="rp-t"><thead><tr><th class="l">업무 (평가기준 점수)</th><th>비중</th><th>업무 점수</th><th>등급</th></tr></thead>`;
+  const seen=[];
+  S.space.tasks.forEach((t,ti)=>{
+    if(!seen.includes(t.code)){
+      seen.push(t.code);
+      const c=Rs.codes[t.code];
+      h+=`<tr class="rp-grp"><td class="l" colspan="2"><b>${esc(t.codeName||t.code)}</b> <span class="rp-s">${esc(t.code)}</span></td><td class="n">${c?f2(c.s):'–'}</td><td class="c">${c?rg(c.g):'–'}</td></tr>`;
+    }
+    const r=Rs.tasks[ti];
+    h+=`<tr><td class="l">${esc(t.name)}<div class="rp-s">${t.crit.map(c=>`${esc(c.label)} ${isNum(c.v)?fmtN(num(c.v)):'–'}`).join(' · ')}</div></td><td class="n">${Number(t.w).toFixed(4)}</td><td class="n">${r.empty?'–':f2(r.s)}</td><td class="c">${r.empty?'–':rg(r.g)}</td></tr>`;
+  });
+  h+=`<tr><td class="l"><b>공간데이터팀</b></td><td class="n">${Rs.W.toFixed(4)}</td><td class="n"><b>${f2(Rs.team)}</b></td><td class="c">${rg(gi)}</td></tr></table>`;
+  return h;
+}
 function renderReport(){const el=document.getElementById('report');if(el)el.innerHTML=pdfReportHTML();}
 function printReport(){
   renderReport();
@@ -2404,6 +2624,7 @@ document.addEventListener('input',e=>{
 },true);
 
 const CHANGELOG=[
+  ['v1.7','2026-10-27',['3분기 공식 결과 엑셀에 맞춰 기본값을 바로잡았어요: 후정제·프랜차이즈·영업시간 채점을 월평균 건수 방식으로 되돌리고(공식 결과와 일치), 3분기 업무 비중·기준값을 엑셀 값으로 갱신','하나씩 입력한 값과 엑셀을 올린 값이 같은 점수가 나오도록 정리 (검색 처리건 목표표는 엑셀 점수로 역산한 값)','엑셀 불러오기: 파일의 기준값이 조정 전 값이면 기본 목표표를 유지해서 점수가 "고정"되지 않아요']],
   ['v1.6','2026-10-14',['"예상 팀 점수" 옆에 CSI 실제 점수 반영 체크: 실제 점수가 나오기 전에는 예상 점수로, 체크하고 CSI 점수를 넣으면 실제 점수로 표시해요 (PDF에도 구분해서 표시)','공유 패널: "연결 확인" 버튼, GitHub 오류 원인 표시, 토큰 입력 보정(공백·따옴표 자동 제거)','수정은 이 브라우저에 자동 저장되고, 다른 사람에게 보이려면 공유 저장이 필요하다는 안내 추가']],
   ['v1.5','2026-10-14',['공유 데이터가 기본으로 보여요: 예전에 접속한 적 있는 사람도 자동으로 공유 데이터로 바뀌고, 이전 입력은 백업해서 "되돌리기"가 가능해요 (값을 직접 고친 사람에게는 먼저 물어봐요)','공유 데이터를 열면 저장한 사람이 보던 분기로 이동해요','제목 옆에 "공유 데이터"/"내 입력" 상태 표시','잘못 읽힌 기준값(순서가 맞지 않는 값)은 열 때 기본값으로 바로잡아요']],
   ['v1.4','2026-10-14',['공유 저장: 저장해 두면 같은 주소로 들어온 다른 사람도 같은 데이터를 봐요 (토큰으로 바로 저장하거나 파일을 내려받아 올리기)','상위 등급 가이드: 오류건 → CSI → 처리량 순서로 묶어서 보여주고, 2건당 1점이라 홀수 건이 점수에 안 잡힌다는 안내와 두 오류건을 함께 줄이는 조합을 추가','결과 PDF의 업무코드별 점수 표에서 인센티브·패널티 열을 뺐어요']],
@@ -2435,15 +2656,26 @@ function renderGuide(){
   const el=$('guide');if(!el)return;
   if(!GUIDE_OPEN){el.classList.add('hidden');return;}
   el.classList.remove('hidden');
-  const G=growthGuide(S);
+  drawGuide(el,growthGuide(S),'team');
+}
+let DV_GUIDE_OPEN=false,dvGuideT=null;
+function renderDvGuide(){
+  const el=$('dv-guide');if(!el)return;
+  if(!DV_GUIDE_OPEN){el.classList.add('hidden');return;}
+  el.classList.remove('hidden');
+  drawGuide(el,growthGuide(S,'div'),'div');
+}
+function drawGuide(el,G,mode){
+  const div=mode==='div';
   if(!G){el.innerHTML='<div class="gd-h">값을 입력하면 계산돼요.</div>';return;}
   if(G.top){el.innerHTML='<div class="gd-h"><b>이미 최고 등급('+GR[G.grade]+')이에요.</b> 지금 점수를 지키려면 아래 쪽 유지선 안내를 참고하세요.</div>';return;}
   const ok=G.levers.filter(l=>!l.impossible),no=G.levers.filter(l=>l.impossible);
-  let h=`<div class="gd-h"><b>${GR[G.grade]} → ${GR[G.next]} 등급</b> 가이드<br>점수가 ${G.cut}점을 넘어야 해서 지금(${f2(G.team)}점)보다 <b>${f2(G.need)}점</b>이 더 필요해요. 나머지는 그대로라고 보고 <b>항목 하나씩</b> 얼마나 올려야 하는지 계산했어요. 협의로 정해지는 오류건을 먼저, 그다음 CSI, 처리량 순서로 보여드려요.</div>`;
+  let h=`<div class="gd-h"><b>${GR[G.grade]} → ${GR[G.next]} 등급</b> 가이드<br>${div?'로컬운영실 ':''}점수가 ${G.cut}점을 넘어야 해서 지금(${f2(G.team)}점)보다 <b>${f2(G.need)}점</b>이 더 필요해요. 나머지는 그대로라고 보고 <b>항목 하나씩</b> 얼마나 올려야 하는지 계산했어요. 협의로 정해지는 오류건을 먼저, 그다음 CSI, 처리량 순서로 보여드려요.</div>`;
   const GROUPS=[
     ['e','① 오류건','협의로 정해지는 항목이라 가장 먼저 살펴볼 만해요'],
-    ['c','② CSI 정성평가','한 번에 올리기는 어렵지만, 만점이 되면 영향이 커요'],
-    ['q','③ 처리량·지연율','그만큼 더 처리하거나 지연을 줄여야 해요']
+    ['c','② 장소데이터팀 CSI 정성평가','한 번에 올리기는 어렵지만, 만점이 되면 영향이 커요'],
+    ...(div?[['s','③ 공간데이터팀 정성평가','업무 평가 점수가 올라야 해요. 업무마다 비중이 작아서 여러 업무를 함께 올려야 할 수도 있어요']]:[]),
+    ['q',div?'④ 장소데이터팀 처리량·지연율':'③ 처리량·지연율','그만큼 더 처리하거나 지연을 줄여야 해요']
   ];
   const row=l=>{
     const d=l.delta,sg=d>0?'+':'−';
@@ -2465,7 +2697,7 @@ function renderGuide(){
     h+='</table></div>';
   }
   if(no.length)h+=`<div class="exn">하나만 바꿔서는 ${GR[G.next]} 등급이 어려운 항목: ${no.slice(0,4).map(l=>`${esc(l.name)}(만점이어도 +${l.gainMax.toFixed(2)}점)`).join(', ')}${no.length>4?` 외 ${no.length-4}개`:''}. 이런 항목은 다른 항목과 함께 올려야 해요.</div>`;
-  h+='<div class="exn">"이만큼 되면"은 그 항목만 바뀌고 나머지는 지금 값 그대로일 때의 값이에요. 처리건·지연율은 입력한 달을 모두 같은 양만큼 옮겨서 계산했고, CSI는 5개 항목을 같은 점수만큼 올린 평균이에요. 여러 항목을 조금씩 함께 올려도 돼요.</div>';
+  h+='<div class="exn">"이만큼 되면"은 그 항목만 바뀌고 나머지는 지금 값 그대로일 때의 값이에요. 처리건·지연율은 입력한 달을 모두 같은 양만큼 옮겨서 계산했고, CSI는 5개 항목을 같은 점수만큼 올린 평균이에요.'+(div?' 공간데이터팀은 그 업무의 평가기준 점수를 모두 같은 점수만큼 올린 값이에요.':'')+' 여러 항목을 조금씩 함께 올려도 돼요.</div>';
   el.innerHTML=h;
 }
 
@@ -2659,12 +2891,169 @@ async function shareSave(){
   }catch(e){shMsg('저장소에 연결하지 못했어요. 인터넷 연결을 확인해주세요.','bad');}
 }
 
-function init(){buildSections();buildWeights();buildCfg();enhanceInputs();update();}
+/* ---------- 탭: 로컬운영실 종합 · 장소데이터팀 · 공간데이터팀 ---------- */
+function buildTabs(){
+  const el=$('tabs');if(!el)return;
+  el.innerHTML=[['div','로컬운영실 종합'],['place','장소데이터팀'],['space','공간데이터팀']].map(([v,t])=>`<button type="button" class="tab" role="tab" data-act="tab" data-v="${v}">${t}</button>`).join('');
+}
+function setView(v){
+  if(v!=='div'&&v!=='place'&&v!=='space')v='div';
+  VIEW=v;
+  try{localStorage.setItem('sla-sim-view',v);}catch(e){}
+  const pg=document.querySelector('.page');if(pg)pg.dataset.view=v;
+  $('view-div').classList.toggle('hidden',v!=='div');
+  $('view-space').classList.toggle('hidden',v!=='space');
+  document.querySelectorAll('#tabs .tab').forEach(b=>{const on=b.dataset.v===v;b.classList.toggle('on',on);b.setAttribute('aria-selected',on?'true':'false');});
+  window.scrollTo(0,0);
+}
+/* ---------- 공간데이터팀 ---------- */
+function spaceTaskHTML(ti){
+  const t=S.space.tasks[ti];
+  return `<div class="sprow">
+    <div class="spn"><div class="sn">${esc(t.name)}</div><div class="sg">비중 ${Number(t.w).toFixed(4)}</div></div>
+    <div class="spin">${t.crit.map((c,ci)=>`<label class="spc"><span>${esc(c.label)}${t.crit.length>1?` <span class="sg">${Math.round(num(c.cw)*100)}%</span>`:''}</span><input class="minp" type="number" inputmode="decimal" step="any" data-sp="${ti}:${ci}" value="${c.v}" placeholder="점수" aria-label="${esc(t.name)} ${esc(c.label)} 점수"></label>`).join('')}</div>
+    <div class="spr"><span class="res blue" id="sp-task-${ti}"></span></div>
+  </div>`;
+}
+function buildSpace(){return;   // 장소데이터팀 전용
+  const el=$('view-space');if(!el||!S.space)return;
+  const codes=[];
+  S.space.tasks.forEach((t,ti)=>{let g=codes.find(c=>c.code===t.code);if(!g){g={code:t.code,name:t.codeName||t.code,items:[]};codes.push(g);}g.items.push(ti);});
+  el.innerHTML=`<div class="card big">
+    <div class="dtop">
+      <div>
+        <h2 class="vh">공간데이터팀 · 정성평가</h2>
+        <p class="note">처리량·오류차감 없이 <b>업무별 평가 점수(0~100)</b>로만 평가해요. 평가기준 점수 → 업무 점수(비중 평균) → 팀 점수(업무 비중 합산) 순서로 계산해요.</p>
+        <div id="sp-note"></div>
+        <div class="mxrow"><button type="button" class="tbtn" data-act="spprev">직전 분기 값으로 채우기</button></div>
+      </div>
+      <div class="resbox-wrap">
+        <div class="resbox" id="sp-resbox"><div style="text-align:right"><span class="lab" id="sp-lab-score">예상 팀 점수</span><div class="score"><span class="n" id="sp-score">--</span><span class="u">점</span></div></div><div class="sep"></div><div><span class="lab" id="sp-lab-grade">예상 등급</span><span class="gr" id="sp-grade">--</span><span class="incl" id="sp-inc"></span></div></div>
+        <label class="csiact" title="공간데이터팀 평가 점수가 확정되어 넣었으면 체크하세요"><input type="checkbox" id="space-actual"> 실제 점수 반영됨</label>
+        <div class="csinote" id="sp-status"></div>
+      </div>
+    </div>
+    <div class="legend" id="sp-legend" aria-label="등급표"></div>
+  </div>
+  ${codes.map(g=>`<div class="card"><div class="sh"><h2>${esc(g.name)} <span class="sg">(${esc(g.code)})</span></h2><span class="res blue" id="sp-code-${esc(g.code)}"></span></div>${g.items.map(spaceTaskHTML).join('')}</div>`).join('')}`;
+}
+function updateSpace(){return;   // 장소데이터팀 전용
+  if(!$('sp-score')||!S.space)return;
+  const Rs=computeSpace(S),st=spaceStatus(S);
+  $('sp-lab-score').textContent=st.actual?'팀 점수 (실제)':'예상 팀 점수';
+  $('sp-lab-grade').textContent=st.actual?'등급 (실제)':'예상 등급';
+  $('sp-resbox').classList.toggle('actual',st.actual);
+  $('space-actual').checked=!!S.space.actual;
+  const ge=$('sp-grade'),fi=$('sp-inc');
+  if(Rs.has){$('sp-score').textContent=f2(Rs.team);ge.textContent=GR[Rs.grade];ge.className='gr gc'+Rs.grade;fi.textContent=incTxt(Rs.grade);fi.className='incl '+incKind(Rs.grade);}
+  else{$('sp-score').textContent='--';ge.textContent='--';ge.className='gr';fi.textContent='점수를 입력하면 계산돼요';fi.className='incl';}
+  const nt=$('sp-status');
+  if(st.actual){nt.className='csinote ok';nt.textContent='✓ 실제 점수가 반영된 점수예요';}
+  else if(S.space.actual&&!st.filledAll){nt.className='csinote warn';nt.textContent='실제 점수로 보려면 모든 업무의 점수를 입력해주세요';}
+  else if(st.prefilled){nt.className='csinote';nt.textContent='직전 분기 점수를 예상값으로 넣어 뒀어요. 실제 점수가 나오면 고치고 체크해주세요';}
+  else if(!st.filledAny){nt.className='csinote';nt.textContent='아직 점수가 없어요 (공간데이터팀 제외)';}
+  else{nt.className='csinote';nt.textContent='입력한 값은 예상이에요. 실제 점수가 나오면 체크해주세요';}
+  const sn=$('sp-note');
+  if(sn)sn.innerHTML=Rs.skipped.length&&Rs.has?`<div class="exn">점수가 없는 업무 ${Rs.skipped.length}개는 계산에서 제외했어요: ${esc(Rs.skipped.join(', '))}</div>`:'';
+  S.space.tasks.forEach((t,ti)=>{
+    const el=$('sp-task-'+ti),r=Rs.tasks[ti];if(!el||!r)return;
+    el.textContent=r.empty?'점수를 입력하세요':`업무 점수 ${f2(r.s)}점 (${GR[r.g]})`;
+  });
+  Object.keys(Rs.codes).forEach(k=>{const el=$('sp-code-'+k),c=Rs.codes[k];if(el)el.textContent=`코드 점수 ${f2(c.s)}점 (${GR[c.g]})`;});
+  $('sp-legend').innerHTML=legendHTML(Rs.has?Rs.grade:-1);
+}
+function fillSpaceFromPrev(){
+  const ks=[...new Set([...Object.keys(DATA),...Object.keys(SPACE_PRESET_DATA)])].filter(k=>k<S.key).sort();
+  let from=null;
+  for(const k of ks){
+    const sp=(DATA[k]&&DATA[k].space)||defaultSpace(k);
+    if(sp.tasks.some(t=>t.crit.some(c=>isNum(c.v))))from=sp;
+  }
+  if(!from)return false;
+  S.space.tasks.forEach(t=>{
+    const f=from.tasks.find(x=>x.name===t.name&&x.code===t.code)||from.tasks.find(x=>x.name===t.name);
+    if(f)t.crit.forEach(c=>{const fc=f.crit.find(x=>x.label===c.label);if(fc)c.v=fc.v;});
+  });
+  S.space.prefilled=true;S.space.actual=false;
+  return true;
+}
+/* ---------- 로컬운영실 종합 ---------- */
+function buildDiv(){return;   // 장소데이터팀 전용
+  const el=$('view-div');if(!el)return;
+  el.innerHTML=`<div class="card big">
+    <div class="dtop">
+      <div>
+        <h2 class="vh">로컬운영실 종합</h2>
+        <p class="note">로컬운영실 점수는 <b>장소데이터팀</b>과 <b>공간데이터팀</b> 점수를 각 팀의 비중으로 합산한 값(가중평균)이에요. 두 팀의 값은 각 탭에서 입력하세요.</p>
+        <div id="dv-note"></div>
+      </div>
+      <div class="resbox-wrap">
+        <div class="resbox" id="dv-resbox"><div style="text-align:right"><span class="lab" id="dv-lab-score">예상 로컬운영실 점수</span><div class="score"><span class="n" id="dv-score">--</span><span class="u">점</span></div></div><div class="sep"></div><div><span class="lab" id="dv-lab-grade">예상 등급</span><span class="gr" id="dv-grade">--</span><span class="incl" id="dv-inc"></span></div></div>
+        <div class="csinote" id="dv-status"></div>
+      </div>
+    </div>
+    <div class="tiles">
+      <div class="tile"><span class="k">정량평가 환산점수 (장소)</span><span class="v" id="dv-quant">--</span></div>
+      <div class="tile"><span class="k">정성평가 환산점수 (장소 CSI + 공간)</span><span class="v" id="dv-qual">--</span></div>
+      <div class="tile"><span class="k">오류차감 직접 점수</span><span class="v neg" id="dv-ded">--</span></div>
+      <div class="tile"><span class="k">합산 적용 비중</span><span class="v" id="dv-w">–</span></div>
+    </div>
+    <div class="dx" id="dv-dx"></div>
+    <div class="legend" id="dv-legend" aria-label="등급표"></div>
+    <div class="guide hidden" id="dv-guide"></div>
+  </div>
+  <div class="card"><div class="sh"><h2>팀별 점수</h2></div><div class="scrollx"><table class="cfg ex gd" id="dv-table"></table></div><div class="exn" id="dv-formula"></div></div>`;
+}
+function updateDiv(){return;   // 장소데이터팀 전용
+  if(!$('dv-score'))return;
+  const D=computeDivision(S),gi=D.grade;
+  $('dv-lab-score').textContent=D.actual?'로컬운영실 점수 (실제)':'예상 로컬운영실 점수';
+  $('dv-lab-grade').textContent=D.actual?'등급 (실제)':'예상 등급';
+  $('dv-resbox').classList.toggle('actual',D.actual);
+  const ge=$('dv-grade'),fi=$('dv-inc');
+  if(D.has){$('dv-score').textContent=f2(D.score);ge.textContent=GR[gi];ge.className='gr gc'+gi;fi.textContent=incTxt(gi);fi.className='incl '+incKind(gi);}
+  else{$('dv-score').textContent='--';ge.textContent='--';ge.className='gr';fi.textContent='값을 입력하면 계산돼요';fi.className='incl';}
+  const nt=$('dv-status'),nn=$('dv-note');
+  const pend=[];
+  if(!D.statusPlace.actual)pend.push('장소데이터팀 (CSI 실제 점수 전)');
+  if(!D.statusSpace.actual)pend.push(`공간데이터팀 (${D.statusSpace.prefilled?'직전 분기 값 사용':'실제 점수 전'})`);
+  if(!D.has){nt.className='csinote';nt.textContent='두 팀의 값을 입력하면 계산돼요';}
+  else if(D.actual){nt.className='csinote ok';nt.textContent='✓ 두 팀의 실제 점수가 모두 반영된 점수예요';}
+  else{nt.className='csinote';nt.textContent='예상 점수예요 · 실제 점수 전: '+pend.join(', ');}
+  const miss=[];if(!D.place.has)miss.push('장소데이터팀');if(!D.space.has)miss.push('공간데이터팀');
+  nn.innerHTML=(D.has&&miss.length)?`<div class="qn">${miss.join('·')} 값이 없어서 <b>${D.parts.map(p=>p.name).join('·')}만으로 계산한 값</b>이에요. ${miss.includes('장소데이터팀')?'"장소데이터팀" 탭에서 값을 입력하거나 점수 불러오기를 쓰세요.':'"공간데이터팀" 탭에서 점수를 입력하세요.'}</div>`:'';
+  $('dv-quant').textContent=D.quantW?f2(D.quant)+'점':'--';
+  $('dv-qual').textContent=D.qualW?f2(D.qual)+'점':'--';
+  $('dv-ded').textContent=D.place.has?f2(D.ded)+'점':'--';
+  $('dv-w').textContent=D.W?(D.W*100).toFixed(2)+'%':'–';
+  const dx=$('dv-dx');
+  if(D.has){
+    let t=gi<CUT.length?`${GR[gi]} 등급 유지선(${CUT[gi]}점 초과)까지 <b>${f2(D.score-CUT[gi])}점</b> 여유`:`${GR[gi]} 등급 구간이에요 (${CUT[CUT.length-1]}점 이하)`;
+    if(gi>0)t+=` · ${GR[gi-1]} 등급(${CUT[gi-1]}점 초과)까지 <b>${f2(CUT[gi-1]-D.score)}점</b> 더 필요 <button type="button" class="lnk glink" data-act="dvguide">${DV_GUIDE_OPEN?'가이드 닫기':'어떤 항목을 올리면 될까요?'}</button>`;else t+=' · 최고 등급이에요';
+    dx.innerHTML=`<div>${t}</div>`;
+  }else dx.innerHTML='';
+  $('dv-legend').innerHTML=legendHTML(D.has?gi:-1);
+  // 팀별 표
+  const rows=[['place','장소데이터팀',D.place,D.statusPlace],['space','공간데이터팀',D.space,D.statusSpace]].map(([k,nm,R,st])=>{
+    const p=D.parts.find(x=>x.key===k);
+    const share=p&&D.W?p.W/D.W:0,contrib=p&&D.W?p.W*p.s/D.W:0;
+    const chip=st.actual?'<span class="chip ok">실제</span>':'<span class="chip">예상</span>';
+    return p?`<tr><td><b>${nm}</b></td><td>${p.W.toFixed(4)} <span class="sg">(${(share*100).toFixed(1)}%)</span></td><td>${f2(p.s)}점</td><td><b class="gc${R.grade}">${GR[R.grade]}</b></td><td>${f2(contrib)}점</td><td>${chip}</td><td><button type="button" class="lnk" data-act="tab" data-v="${k}">입력·상세 보기</button></td></tr>`
+      :`<tr><td><b>${nm}</b></td><td colspan="5" class="sg">값이 없어요</td><td><button type="button" class="lnk" data-act="tab" data-v="${k}">입력하러 가기</button></td></tr>`;
+  });
+  $('dv-table').innerHTML='<tr><th>팀</th><th>합산 비중</th><th>팀 점수</th><th>등급</th><th title="팀 점수에 비중을 곱해 로컬운영실 점수에 더해지는 몫">로컬운영실 점수에 반영되는 몫</th><th>상태</th><th></th></tr>'+rows.join('')+(D.has?`<tr class="gh"><td colspan="7"><b>로컬운영실</b> · 합산 비중 ${D.W.toFixed(4)} · 점수 <b>${f2(D.score)}점</b> <b class="gc${gi}">${GR[gi]}</b></td></tr>`:'');
+  $('dv-formula').innerHTML=D.parts.length===2?`계산: (${D.parts[0].W.toFixed(4)} × ${f2(D.parts[0].s)} + ${D.parts[1].W.toFixed(4)} × ${f2(D.parts[1].s)}) ÷ ${D.W.toFixed(4)} = <b>${f2(D.score)}</b>`:'';
+  if(DV_GUIDE_OPEN){clearTimeout(dvGuideT);dvGuideT=setTimeout(renderDvGuide,150);}
+}
+
+function init(){buildSections();buildWeights();buildCfg();buildSpace();buildDiv();enhanceInputs();update();}
 buildImport();
 buildVer();
 buildShare();
+buildTabs();
 syncQsel();
 init();
+setView(VIEW);
 initShared();
 if(LOCAL_OCR)setLocalStatus();
 else if(!(window.claude&&typeof window.claude.use==='function'))updateImgAvail();
